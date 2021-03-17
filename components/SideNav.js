@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link'
 import { makeStyles, useTheme } from '@material-ui/core/styles';
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
 import ChevronRightIcon from '@material-ui/icons/ChevronRight';
@@ -42,6 +43,7 @@ const useStyles = makeStyles((theme) => ({
 const SideNav = (props) => {
     const classes = useStyles(props);
     const theme = useTheme();
+    const url = {"대시보드" : "/Dashboard", "모의주식" : "/Simulation"};
 
     const handleDrawerClose = () => {
         props.setOpen(false);
@@ -65,10 +67,12 @@ const SideNav = (props) => {
         <Divider />
         <List>
             {['대시보드', '모의주식'].map((text, index) => (
-                <ListItem button key={text}>
-                <ListItemIcon>{index % 2 === 0 ? <InboxIcon /> : <MailIcon />}</ListItemIcon>
-                <ListItemText primary={text} />
-                </ListItem>
+                <Link href={url[text]} key={index}>
+                    <ListItem button key={text}>
+                        <ListItemIcon>{index % 2 === 0 ? <InboxIcon /> : <MailIcon />}</ListItemIcon>
+                        <ListItemText primary={text} />
+                    </ListItem>
+                </Link>
             ))}
         </List>
         <List>
