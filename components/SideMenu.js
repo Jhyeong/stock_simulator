@@ -6,12 +6,16 @@ import ChevronRightIcon from '@material-ui/icons/ChevronRight';
 import ListItem from '@material-ui/core/ListItem';
 import ListItemIcon from '@material-ui/core/ListItemIcon';
 import ListItemText from '@material-ui/core/ListItemText';
+import Collapse from '@material-ui/core/Collapse';
 import InboxIcon from '@material-ui/icons/MoveToInbox';
 import MailIcon from '@material-ui/icons/Mail';
 import Divider from '@material-ui/core/Divider';
 import List from '@material-ui/core/List';
 import Drawer from '@material-ui/core/Drawer';
 import IconButton from '@material-ui/core/IconButton';
+import StarBorder from '@material-ui/icons/StarBorder';
+import ExpandLess from '@material-ui/icons/ExpandLess';
+import ExpandMore from '@material-ui/icons/ExpandMore';
 
 const useStyles = makeStyles((theme) => ({
     root : {
@@ -40,14 +44,25 @@ const useStyles = makeStyles((theme) => ({
     },
     }));
 
-const SideNav = (props) => {
+const SideMenu = (props) => {
     const classes = useStyles(props);
     const theme = useTheme();
-    const url = {"대시보드" : "/Dashboard", "모의주식" : "/Simulation"};
+    const url = {"FrnOrgTrade" : "/FrnOrgTrade"};
+    const [smallMenuOpen, setSmallMenuOpen] = React.useState(true);
 
-    const handleDrawerClose = () => {
+    // 메뉴바 handling
+    const handleMenu = () => {
         props.setOpen(false);
     };
+
+    // 특징주 소메뉴 handling
+    const handleSmallMenu = () => {
+        if(smallMenuOpen){
+            setSmallMenuOpen(false);
+        }else{
+            setSmallMenuOpen(true);
+        }
+    }
 
     return(
         <Drawer
@@ -60,32 +75,39 @@ const SideNav = (props) => {
             }}
         >
             <div className={classes.drawerHeader}>
-                <IconButton onClick={handleDrawerClose}>
+                <IconButton onClick={handleMenu}>
                     {theme.direction === 'ltr' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
                 </IconButton>
             </div>
         <Divider />
         <List>
-            {['대시보드', '모의주식'].map((text, index) => (
-                <Link href={url[text]} key={index}>
-                    <ListItem button key={text}>
-                        <ListItemIcon>{index % 2 === 0 ? <InboxIcon /> : <MailIcon />}</ListItemIcon>
-                        <ListItemText primary={text} />
+            <ListItem button onClick={handleSmallMenu}>
+                <ListItemIcon><InboxIcon /></ListItemIcon>
+                <ListItemText primary={'특징주분석'} />
+                {smallMenuOpen ? <ExpandLess /> : <ExpandMore />}
+            </ListItem>
+            <Collapse in={smallMenuOpen} timeout="auto" unmountOnExit>
+                <List component="div" disablePadding>
+                    <Link href="/FrnOrgTrade">
+                        <ListItem button className={classes.nested}>
+                            <ListItemIcon>
+                            <StarBorder />
+                            </ListItemIcon>
+                            <ListItemText primary="외국인/기관매매" />
+                        </ListItem>
+                    </Link>
+                    <ListItem button className={classes.nested}>
+                        <ListItemIcon>
+                        <StarBorder />
+                        </ListItemIcon>
+                        <ListItemText primary="상한가종목" />
                     </ListItem>
-                </Link>
-            ))}
-        </List>
-        <List>
-            {['All mail', 'Trash', 'Spam'].map((text, index) => (
-                <ListItem button key={text}>
-                <ListItemIcon>{index % 2 === 0 ? <InboxIcon /> : <MailIcon />}</ListItemIcon>
-                <ListItemText primary={text} />
-                </ListItem>
-            ))}
+                </List>
+            </Collapse>
         </List>
         <Divider />
         </Drawer>
     );
 };
 
-export default SideNav;
+export default SideMenu;
