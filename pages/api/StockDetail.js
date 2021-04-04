@@ -7,63 +7,44 @@ export default async (req, res) => {
 }
 
 /**
- * 네이버 증권에서 주식 데이터 크롤링하는 함수
- * 외국인 / 기관 모두 순매수 or 순매도한 종목을 return
+ * 주식상세 정보 크롤링
+ * 
  * @param {}} type 
  * @returns 
  */
-const callStockData = async (type) => {
-  const frnUrl = "https://finance.naver.com/sise/sise_deal_rank_iframe.nhn?sosok=01&investor_gubun=9000&type=" + type;//외국인
-  const orgUrl = "https://finance.naver.com/sise/sise_deal_rank_iframe.nhn?sosok=01&investor_gubun=1000&type=" + type;//기관
-  let stockDataList = [];
+const callStockData = async (stockCode) => {
+  const url = "https://finance.naver.com/item/sise.nhn?code=" + stockCode;
+  let stockData = {
+      id: "",
+      stockName: "",
+      currentPrice: "",
+      changedPrice: "",
+      changedRatio: ""
+    };
   
   // EUC-KR로 디코딩
   const decodeText = (text) =>{
-      return iconv.decode(text, "EUC-KR");
+      return iconv.decode(text.trim(), "EUC-KR");
   }
 
-  //외국인 매매 크롤링
-  await axios({url:frnUrl, method:"POST",responseEncoding:"binary"}).then(response => {
+  //크롤링 실행
+  await axios({url:url, method:"POST",responseEncoding:"binary"}).then(response => {
       const $ = cheerio.load(response.data);
-      $(".box_type_ms:eq(1)").find("td").has(".tit").each((index, item) => {
-          const data = {
-              id       : decodeText($(item).find("a").attr("href").split("=")[1]),
-              stockName: decodeText($(item).text()),
-              frnAmount: decodeText($(item).next().next().text()),
-              orgAmount: 0,
-              sum      : 0
-          };
-
-          stockDataList.push(data);
-      });
+    
+      stockData.id = stockCode;
+      stockData.stockName = decodeText($(".wrap_company a").text());
+      stockData.currentPrice = decodeText($("#_nowVal").text());
+      stockData.changedPrice = decodeText($("#_diff .tah").text());
+      stockData.changedRatio = decodeText($("#_rate .tah").text());
+      
+      if(decodeText($("#_diff .blind").text()) == "하락"){
+        stockData.changedPrice = "-" + stockData.changedPrice;
+      }
   }).catch(error => {
       console.log(error);
   });
 
-  //기관 매매 크롤링
-  await axios({url:orgUrl, method:"GET",responseEncoding:"binary"}).then(response => {
-      const $ = cheerio.load(response.data);
-      $(".box_type_ms:eq(1)").find("td").has(".tit").each((index, item) => {
-            const id = decodeText($(item).find("a").attr("href").split("=")[1]);
-            //외국인이 매매한 종목만 검색
-            let frnData = stockDataList.find((item) => {
-                return item.id == id;
-            });
-            
-            if(frnData){
-                frnData.orgAmount = decodeText($(item).next().next().text());
-                frnData.sum = parseInt(frnData.frnAmount.replace(/,/g, ""), 10) + parseInt(frnData.orgAmount.replace(/,/g, ""), 10);
-            }
-      });
-  }).catch(error => {
-      console.log(error);
-  });
-
-  stockDataList = stockDataList.filter((item) => {
-      return item.frnAmount != "0" && item.orgAmount != "0";
-  });
-
-  return stockDataList;
+  return stockData;
 }
 
 

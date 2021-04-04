@@ -7,8 +7,8 @@ export default async (req, res) => {
 }
 
 /**
- * 네이버 증권에서 주식 데이터 크롤링하는 함수
- * 외국인 / 기관 모두 순매수 or 순매도한 종목을 return
+ * 외국인 / 기관 모두 순매수 or 순매도한 종목 리스트 크롤링
+ * 
  * @param {}} type 
  * @returns 
  */
