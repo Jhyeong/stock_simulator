@@ -17,8 +17,8 @@ const useStyles = makeStyles({
     root: {
       minWidth: 275,
     },
-    stockList:{
-        width: 1200,
+    stockListCard:{
+        width: 700,
         height: 500,
         float: 'left',
         marginRight: 20,
@@ -28,20 +28,10 @@ const useStyles = makeStyles({
         width: 400,
     },
     frnTable:{
-        width:550,
+        width:650,
         height:400,
         float:'left',
         marginRight:25,
-        "& .up": {
-            color: 'red'
-        },
-        "& .down": {
-            color: 'blue'
-        }
-    },
-    orgTable:{
-        width:550,
-        height:400,
         "& .up": {
             color: 'red'
         },
@@ -61,28 +51,31 @@ const FrnOrgTrade = (props) => {
     const classes = useStyles();
     
     const [value, setValue] = React.useState('buy');
+    const [page, setPage]   = React.useState(0);
+    const [sortType, setSortType] = React.useState("desc");
     const [frnDataList, setFrnDataList] = React.useState(props.frnDataList);
-    const [orgDataList, setOrgDataList] = React.useState(props.orgDataList);
 
     // 열 정의
     const columns = [
-        { field: 'id'       , headerName: '종목코드', width: 120 },
-        { field: 'stockName', headerName: '종목명'  , width: 130 },
-        { field: 'quantity' , headerName: '수량'    , width: 130, cellClassName: value == "buy" ? "up" : "down" },
-        { field: 'amount'   , headerName: '금액'    , width: 130, cellClassName: value == "buy" ? "up" : "down" },
+        { field: 'id'       , headerName: '종목코드'    , width: 120 },
+        { field: 'stockName', headerName: '종목명'      , width: 130 },
+        { field: 'frnAmount', headerName: '외국인 금액' , width: 130, cellClassName: value == "buy" ? "up" : "down", type:"number" },
+        { field: 'orgAmount', headerName: '기관 금액'   , width: 130, cellClassName: value == "buy" ? "up" : "down", type:"number" },
+        { field: 'sum'      , headerName: '합계'        , width: 130, cellClassName: value == "buy" ? "up" : "down", type:"number" }
     ];
 
     //순매수 / 순매도 변경 이벤트
     const changeTradeType = async (event) => {
-      setValue(event.target.value);
-      setFrnDataList(Array.from(await callStockData(event.target.value))[0]);
-      setOrgDataList(Array.from(await callStockData(event.target.value))[1]);
+        setFrnDataList(Array.from(await callStockData(event.target.value)));
+        setValue(event.target.value);
+        event.target.value == "buy" ? setSortType("desc") : setSortType("asc");
+        setPage(0);
     };
 
     return(
         <div className={classes.root}>
             {/* 주식종목 리스트 */}
-            <Card className={classes.stockList}>
+            <Card className={classes.stockListCard}>
                 <CardContent>
                     {/* 매매타입 라디오버튼 */}
                     <div>
@@ -96,13 +89,29 @@ const FrnOrgTrade = (props) => {
                     </div>
                     {/* 데이터 테이블 */}
                     <div>
-                        <DataGrid className={classes.frnTable} rows={frnDataList} columns={columns} pageSize={5}/>
-                        <DataGrid className={classes.orgTable} rows={orgDataList} columns={columns} pageSize={5}/>
+                        <DataGrid 
+                            className={classes.frnTable} 
+                            rows={frnDataList} 
+                            columns={columns} 
+                            page={page}
+                            pageSize={10}
+                            sortModel={[
+                                {
+                                  field: 'sum',
+                                  sort: sortType,
+                                },
+                              ]}
+                        />
                     </div>
                 </CardContent>
             </Card>
-            {/* 주식차트 */}
+            {/* 주식 정보 */}
             <Card className={classes.chart}>
+                <CardContent>
+                    <div>
+                        
+                    </div>
+                </CardContent>
                 <CardContent>
                     <img
                         src="https://ssl.pstatic.net/imgfinance/chart/item/candle/day/005930.png"
@@ -121,7 +130,7 @@ const FrnOrgTrade = (props) => {
  */
 const callStockData = async (type) => {
     let stockDataList;
-    await axios({url:"http://localhost:3000/api/stockList?type=" + type}).then(response => {
+    await axios({url:"http://localhost:3000/api/StockList?type=" + type}).then(response => {
         stockDataList = response.data;
     });
 
@@ -137,8 +146,7 @@ export async function getServerSideProps(){
 
     return {
         props: {
-            frnDataList : stockDataList[0],
-            orgDataList : stockDataList[1],
+            frnDataList : stockDataList
         }
     }
 }
