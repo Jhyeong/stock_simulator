@@ -14,13 +14,7 @@ export default async (req, res) => {
  */
 const callStockData = async (stockCode) => {
   const url = "https://finance.naver.com/item/main.nhn?code=" + stockCode;
-  let stockData = {
-      date: "",
-      finalPrice: "",
-      changedPrice: "",
-      frnQuantity: "",
-      orgQuantity: ""
-    };
+  let stockData = [];
   
   // EUC-KR로 디코딩
   const decodeText = (text) =>{
@@ -30,17 +24,18 @@ const callStockData = async (stockCode) => {
   //크롤링 실행
   await axios({url:url, method:"POST",responseEncoding:"binary"}).then(response => {
       const $ = cheerio.load(response.data);
-      console.log(decodeText(($(".sub_section.right").html())))
-      stockData = decodeText(($(".sub_section.right").html()));
-      // stockData.date = stockCode;
-      // stockData.finalPrice = decodeText($(".wrap_company a").text());
-      // stockData.changedPrice = decodeText($("#_nowVal").text());
-      // stockData.frnQuantity = decodeText($("#_diff .tah").text());
-      // stockData.orgQuantity = decodeText($("#_rate .tah").text());
       
-      // if(decodeText($("#_diff .blind").text()) == "하락"){
-      //   stockData.changedPrice = "-" + stockData.changedPrice;
-      // }
+      $(".sub_section.right tbody th").each((index, item) => {
+          const data = {
+              id            : decodeText($(item).text()),
+              finalPrice    : decodeText($(item).next().text()),
+              changedPrice  : decodeText($(item).next().next().text()).replace("상향", "+").replace("하향", "-").replace(/\s/g, ""),
+              frnQuantity   : decodeText($(item).next().next().next().text()),
+              orgQuantity   : decodeText($(item).next().next().next().next().text())
+          }
+
+          stockData.push(data);
+      });
   }).catch(error => {
       console.log(error);
   });

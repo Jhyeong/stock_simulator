@@ -58,27 +58,46 @@ const useStyles = makeStyles({
     priceDown: {
         fontWeight: 'bold',
         color:'blue'
+    },
+    frnOrgHistTable:{
+        fontSize: 12,
+        width:600,
+        height:450,
+        "& .up": {
+            color: 'red'
+        },
+        "& .down": {
+            color: 'blue'
+        }
     }
 });
 
 const FrnOrgTrade = (props) => { 
     const classes = useStyles();
     
-    const [tradeType, setTradeType]                 = React.useState('buy');                //매매타입
-    const [page, setPage]                           = React.useState(0);                    //테이블 페이지
-    const [sortType, setSortType]                   = React.useState("desc");               //테이블 정렬
-    const [stockDataList, setStockDataList]         = React.useState(props.stockDataList);  //테이블 데이터 리스트
-    const [stockDetail, setStockDetail]             = React.useState(props.stockDetail);    //상세데이터
-    const [frnOrgHist, setFrnOrgHist]               = React.useState(props.frnOrgHist);    //외국인/기관 매매 내역
-    const [selectedStockCode, setSelectedStockCode] = React.useState(props.stockDetail.id); //선택한 주식종목코드
+    const [tradeType            , setTradeType]         = React.useState('buy');                //매매타입
+    const [page                 , setPage]              = React.useState(0);                    //테이블 페이지
+    const [sortType             , setSortType]          = React.useState("desc");               //테이블 정렬
+    const [stockDataList        , setStockDataList]     = React.useState(props.stockDataList);  //테이블 데이터 리스트
+    const [stockDetail          , setStockDetail]       = React.useState(props.stockDetail);    //상세데이터
+    const [frnOrgHist           , setFrnOrgHist]        = React.useState(props.frnOrgHist);     //외국인/기관 매매 내역
+    const [selectedStockCode    , setSelectedStockCode] = React.useState(props.stockDetail.id); //선택한 주식종목코드
 
     // 열 정의
-    const columns = [
+    const stockListColumns = [
         { field: 'id'       , headerName: '종목코드'    , width: 120 },
         { field: 'stockName', headerName: '종목명'      , width: 130 },
         { field: 'frnAmount', headerName: '외국인 금액' , width: 130, cellClassName: tradeType == "buy" ? "up" : "down", type:"number" },
         { field: 'orgAmount', headerName: '기관 금액'   , width: 130, cellClassName: tradeType == "buy" ? "up" : "down", type:"number" },
         { field: 'sum'      , headerName: '합계'        , width: 130, cellClassName: tradeType == "buy" ? "up" : "down", type:"number" }
+    ];
+
+    const frnOrgHistColumns = [
+        { field: 'id'           , headerName: '날짜'    },
+        { field: 'finalPrice'   , headerName: '종가'    },
+        { field: 'changedPrice' , headerName: '전일비'  , cellClassName: (params) => (parseInt(params.value) > 0 ? "up" : "down")},
+        { field: 'frnQuantity'  , headerName: '외국인'  , cellClassName: (params) => (parseInt(params.value) > 0 ? "up" : "down")},
+        { field: 'orgQuantity'  , headerName: '기관'    , cellClassName: (params) => (parseInt(params.value) > 0 ? "up" : "down")}
     ];
 
     //순매수 / 순매도 변경 이벤트
@@ -116,7 +135,7 @@ const FrnOrgTrade = (props) => {
                         <DataGrid 
                             className={classes.stockListTable} 
                             rows={stockDataList} 
-                            columns={columns}
+                            columns={stockListColumns}
                             onRowClick={onRowClick}
                             page={page}
                             pageSize={10}
@@ -147,8 +166,17 @@ const FrnOrgTrade = (props) => {
                         alt=""
                     />
                 </CardContent>
-                {/* 외국인/기관매매 상세 */}
+                {/* 외국인/기관매매 상세 테이블*/}
                 <CardContent>
+                    <div>
+                        <DataGrid 
+                            className={classes.frnOrgHistTable} 
+                            rows={frnOrgHist} 
+                            columns={frnOrgHistColumns}
+                            page={0}
+                            pageSize={10}
+                        />
+                    </div>
                 </CardContent>
             </Card>
         </div>
@@ -206,6 +234,8 @@ export async function getServerSideProps(){
     const stockDetail   = await callStockDetail(stockDataList[0].id);   //주식상세정보
     const frnOrgHist    = await callFrnOrgHist(stockDataList[0].id);    //외국인/기관 매매 내역
     
+    console.log(frnOrgHist);
+
     return {
         props: {
             stockDataList : stockDataList,
