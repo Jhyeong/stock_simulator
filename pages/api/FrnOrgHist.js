@@ -21,18 +21,18 @@ const callStockData = async (stockCode) => {
   }
   //크롤링 실행
   await axios({url:url, method:"POST",responseEncoding:"binary"}).then(response => {
-    //   const $ = cheerio.load(response.data);
-    //   $(".sub_section.right tbody th").each((index, item) => {
-    //       const data = {
-    //           id            : decodeText($(item).text()),
-    //           finalPrice    : decodeText($(item).next().text()),
-    //           changedPrice  : decodeText($(item).next().next().text()).replace("상향", "+").replace("하향", "-").replace(/\s/g, ""),
-    //           frnQuantity   : decodeText($(item).next().next().next().text()),
-    //           orgQuantity   : decodeText($(item).next().next().next().next().text())
-    //       }
+      const $ = cheerio.load(response.data);
+      $(".sub_section.right tbody th").each((index, item) => {
+          const data = {
+              id            : decodeText($(item).text()),
+              finalPrice    : decodeText($(item).next().text()),
+              changedPrice  : decodeText($(item).next().next().text()).replace("상향", "+").replace("하향", "-").replace(/\s/g, ""),
+              frnQuantity   : decodeText($(item).next().next().next().text()),
+              orgQuantity   : decodeText($(item).next().next().next().next().text())
+          }
 
-    //       stockData.push(data);
-    //   });
+          stockData.push(data);
+      });
   }).catch(error => {
       console.log(error);
   });
