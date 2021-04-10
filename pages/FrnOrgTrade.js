@@ -74,6 +74,7 @@ const useStyles = makeStyles({
 });
 
 const FrnOrgTrade = (props) => { 
+    console.log(process.env.NEXT_PUBLIC_API_URL);
     const classes = useStyles();
     
     const [tradeType            , setTradeType]         = React.useState('buy');                //매매타입
