@@ -16,7 +16,7 @@ const callStockData = async (type) => {
   const frnUrl = "https://finance.naver.com/sise/sise_deal_rank_iframe.nhn?sosok=01&investor_gubun=9000&type=" + type;//외국인
   const orgUrl = "https://finance.naver.com/sise/sise_deal_rank_iframe.nhn?sosok=01&investor_gubun=1000&type=" + type;//기관
   let stockDataList = [];
-  
+  console.log("list start");
   // EUC-KR로 디코딩
   const decodeText = (text) =>{
       return iconv.decode(text, "EUC-KR");
@@ -63,6 +63,7 @@ const callStockData = async (type) => {
       return item.frnAmount != "0" && item.orgAmount != "0";
   });
 
+  console.log("list end");
   return stockDataList;
 }
 
