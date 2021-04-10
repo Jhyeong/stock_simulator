@@ -14,6 +14,7 @@ import FormLabel from '@material-ui/core/FormLabel';
 import { red } from '@material-ui/core/colors';
 import classNames from 'classnames';
 import FrnOrgHist from './api/FrnOrgHist';
+import { useRouter } from 'next/router'
 
 const useStyles = makeStyles({
     root: {
@@ -190,7 +191,7 @@ const FrnOrgTrade = (props) => {
  */
 const callStockList = async (type) => {
     let stockList;
-    await axios({url:"http://localhost:3000/api/StockList?type=" + type}).then(response => {
+    await axios({url:process.env.NEXT_PUBLIC_API_URL + "/api/StockList?type=" + type}).then(response => {
         stockList = response.data;
     });
 
@@ -204,7 +205,7 @@ const callStockList = async (type) => {
  */
 const callStockDetail = async (stockCode) => {
     let stockDetail;
-    await axios({url:"http://localhost:3000/api/StockDetail?type=" + stockCode}).then(response => {
+    await axios({url:process.env.NEXT_PUBLIC_API_URL + "/api/StockDetail?type=" + stockCode}).then(response => {
         stockDetail = response.data;
     });
 
@@ -218,7 +219,7 @@ const callStockDetail = async (stockCode) => {
  */
  const callFrnOrgHist = async (stockCode) => {
     let frnOrgHist;
-    await axios({url:"http://localhost:3000/api/FrnOrgHist?type=" + stockCode}).then(response => {
+    await axios({url:process.env.NEXT_PUBLIC_API_URL + "/api/FrnOrgHist?type=" + stockCode}).then(response => {
         frnOrgHist = response.data;
     });
 
@@ -229,12 +230,11 @@ const callStockDetail = async (stockCode) => {
  * SSR
  * @returns 
  */
-export async function getStaticProps(){
+export async function getServerSideProps(context){
     const stockDataList = await callStockList("buy");                   //주식리스트
     const stockDetail   = await callStockDetail(stockDataList[0].id);   //주식상세정보
     const frnOrgHist    = await callFrnOrgHist(stockDataList[0].id);    //외국인/기관 매매 내역
-    
-    //console.log(frnOrgHist);
+    console.log(process.env.NEXT_PUBLIC_API_URL);
 
     return {
         props: {

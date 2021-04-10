@@ -5,6 +5,7 @@
   "homepage" : "https://jhyeong.github.io/stock_simulator/",
   "scripts": {
     "dev": "next dev",
+    "git" : "git add * && git commit -m '' && git push origin master",
     "build": "next build",
     "export": "next export",
     "deploy": "gh-pages -d build",
