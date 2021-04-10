@@ -231,7 +231,7 @@ const callStockDetail = async (stockCode) => {
  * SSR
  * @returns 
  */
-export async function getServerSideProps(context){
+export async function getStaticProps(context){
     const stockDataList = await callStockList("buy");                   //주식리스트
     const stockDetail   = await callStockDetail(stockDataList[0].id);   //주식상세정보
     const frnOrgHist    = await callFrnOrgHist(stockDataList[0].id);    //외국인/기관 매매 내역
