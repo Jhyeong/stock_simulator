@@ -20,7 +20,6 @@ const callStockData = async (stockCode) => {
       return iconv.decode(text.trim(), "EUC-KR");
   }
   //크롤링 실행
-  /*
   await axios({url:url, method:"POST",responseEncoding:"binary"}).then(response => {
       const $ = cheerio.load(response.data);
       $(".sub_section.right tbody th").each((index, item) => {
@@ -37,7 +36,6 @@ const callStockData = async (stockCode) => {
   }).catch(error => {
       console.log(error);
   });
-  */
   return stockData;
 }
 
