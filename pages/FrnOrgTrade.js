@@ -112,9 +112,7 @@ const FrnOrgTrade = (props) => {
     //행 클릭 이벤트
     const onRowClick = async (param, e) => {
         setSelectedStockCode(param.id);
-        console.log("start");
         setStockDetail(await callStockDetail(param.id));
-        console.log("end");
         setFrnOrgHist(await callFrnOrgHist(param.id));
     }
 
