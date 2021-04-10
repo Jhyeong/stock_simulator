@@ -13,7 +13,6 @@ export default async (req, res) => {
  * @returns 
  */
 const callStockData = async (stockCode) => {
-  console.log("detail start")
   const url = "https://finance.naver.com/item/sise.nhn?code=" + stockCode;
   let stockData = {
       id: "",
@@ -45,7 +44,6 @@ const callStockData = async (stockCode) => {
       console.log(error);
   });
 
-  console.log("detail end")
   return stockData;
 }
 

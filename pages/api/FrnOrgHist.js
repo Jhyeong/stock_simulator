@@ -15,7 +15,6 @@ export default async (req, res) => {
 const callStockData = async (stockCode) => {
   const url = "https://finance.naver.com/item/main.nhn?code=" + stockCode;
   let stockData = [];
-  console.log("start");
   // EUC-KR로 디코딩
   const decodeText = (text) =>{
       return iconv.decode(text.trim(), "EUC-KR");
@@ -40,7 +39,6 @@ const callStockData = async (stockCode) => {
       console.log(error);
   });
 
-  console.log("end");
   return stockData;
 }
 
