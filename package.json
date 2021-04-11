@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "git" : "git push origin master",
-    "build": "next build",
+    "build": "next build --debug",
     "export": "next export",
     "deploy": "gh-pages -d build",
     "start": "next start"

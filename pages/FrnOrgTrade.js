@@ -266,6 +266,7 @@ export async function getStaticProps(context){
     const stockDetail   = await callStockDetail(stockDataList[0].id);   //주식상세정보
     const frnOrgHist    = await callFrnOrgHist(stockDataList[0].id);    //외국인/기관 매매 내역
     const stockNews     = await callStockNews(stockDataList[0].id);     //종목뉴스
+    //const stockNews = []
     console.log(stockNews);
 
     return {
