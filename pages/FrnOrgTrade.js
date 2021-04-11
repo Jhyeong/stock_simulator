@@ -1,38 +1,30 @@
 import React from 'react';
 import { makeStyles } from '@material-ui/core/styles';
-import { Card, CardContent, Input, InputLabel, InputAdornment, InputBase, IconButton } from '@material-ui/core';
-import SearchIcon from '@material-ui/icons/Search';
+import { Card, CardContent} from '@material-ui/core';
 import { DataGrid } from '@material-ui/data-grid';
 import axios from 'axios';
-import cheerio from 'cheerio';
-import iconv from 'iconv-lite';
 import Radio from '@material-ui/core/Radio';
 import RadioGroup from '@material-ui/core/RadioGroup';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 import FormControl from '@material-ui/core/FormControl';
 import FormLabel from '@material-ui/core/FormLabel';
-import { red } from '@material-ui/core/colors';
 import classNames from 'classnames';
-import FrnOrgHist from './api/FrnOrgHist';
-import { useRouter } from 'next/router'
 
 const useStyles = makeStyles({
     root: {
       minWidth: 275,
     },
-    stockListCard:{
-        width: 700,
-        height: 800,
+    cardArea: {
+        width: 750,
+        height: 500,
         float: 'left',
         marginRight: 20,
-        paddingLeft: 5,
-    },
-    inputSearch: {
-        width: 400,
+        marginBottom: 10,
+        padding: 5,
     },
     stockListTable:{
-        width:650,
-        height:680,
+        width:700,
+        height:400,
         float:'left',
         marginRight:25,
         "& .up": {
@@ -41,12 +33,6 @@ const useStyles = makeStyles({
         "& .down": {
             color: 'blue'
         }
-    },
-    chart: {
-        width: 750,
-    },
-    iconButton: {
-        padding: 10,
     },
     currentPrice: {
         fontSize: 30,
@@ -62,7 +48,7 @@ const useStyles = makeStyles({
     },
     frnOrgHistTable:{
         fontSize: 12,
-        width:600,
+        width:700,
         height:450,
         "& .up": {
             color: 'red'
@@ -70,6 +56,11 @@ const useStyles = makeStyles({
         "& .down": {
             color: 'blue'
         }
+    },
+    stockNewsTable:{
+        fontSize: 12,
+        width:700,
+        height:450,
     }
 });
 
@@ -82,23 +73,29 @@ const FrnOrgTrade = (props) => {
     const [stockDataList        , setStockDataList]     = React.useState(props.stockDataList);  //테이블 데이터 리스트
     const [stockDetail          , setStockDetail]       = React.useState(props.stockDetail);    //상세데이터
     const [frnOrgHist           , setFrnOrgHist]        = React.useState(props.frnOrgHist);     //외국인/기관 매매 내역
+    const [stockNews            , setStockNews]         = React.useState(props.stockNews);      //종목 뉴스
     const [selectedStockCode    , setSelectedStockCode] = React.useState(props.stockDetail.id); //선택한 주식종목코드
 
     // 열 정의
     const stockListColumns = [
-        { field: 'id'       , headerName: '종목코드'    , width: 120 },
-        { field: 'stockName', headerName: '종목명'      , width: 130 },
-        { field: 'frnAmount', headerName: '외국인 금액' , width: 130, cellClassName: tradeType == "buy" ? "up" : "down", type:"number" },
-        { field: 'orgAmount', headerName: '기관 금액'   , width: 130, cellClassName: tradeType == "buy" ? "up" : "down", type:"number" },
-        { field: 'sum'      , headerName: '합계'        , width: 130, cellClassName: tradeType == "buy" ? "up" : "down", type:"number" }
+        { field: 'id'       , headerName: '종목코드'    , flex: 1 },
+        { field: 'stockName', headerName: '종목명'      , flex: 1 },
+        { field: 'frnAmount', headerName: '외국인 금액' , flex: 1, cellClassName: tradeType == "buy" ? "up" : "down", type:"number" },
+        { field: 'orgAmount', headerName: '기관 금액'   , flex: 1, cellClassName: tradeType == "buy" ? "up" : "down", type:"number" },
+        { field: 'sum'      , headerName: '합계'        , flex: 1, cellClassName: tradeType == "buy" ? "up" : "down", type:"number" }
     ];
 
     const frnOrgHistColumns = [
-        { field: 'id'           , headerName: '날짜'    },
-        { field: 'finalPrice'   , headerName: '종가'    },
-        { field: 'changedPrice' , headerName: '전일비'  , cellClassName: (params) => (parseInt(params.value) > 0 ? "up" : "down")},
-        { field: 'frnQuantity'  , headerName: '외국인'  , cellClassName: (params) => (parseInt(params.value) > 0 ? "up" : "down")},
-        { field: 'orgQuantity'  , headerName: '기관'    , cellClassName: (params) => (parseInt(params.value) > 0 ? "up" : "down")}
+        { field: 'id'           , headerName: '날짜'    , flex: 1},
+        { field: 'finalPrice'   , headerName: '종가'    , flex: 1},
+        { field: 'changedPrice' , headerName: '전일비'  , flex: 1 , cellClassName: (params) => (parseInt(params.value) > 0 ? "up" : "down")},
+        { field: 'frnQuantity'  , headerName: '외국인'  , flex: 1 , cellClassName: (params) => (parseInt(params.value) > 0 ? "up" : "down")},
+        { field: 'orgQuantity'  , headerName: '기관'    , flex: 1 , cellClassName: (params) => (parseInt(params.value) > 0 ? "up" : "down")}
+    ];
+
+    const stockNewsColumns = [
+        { field: 'title'    , headerName: '제목'    , flex: 1},
+        { field: 'dateTime' , headerName: '날짜'    , flex: 1, type:"date"},
     ];
 
     //순매수 / 순매도 변경 이벤트
@@ -114,12 +111,13 @@ const FrnOrgTrade = (props) => {
         setSelectedStockCode(param.id);
         setStockDetail(await callStockDetail(param.id));
         setFrnOrgHist(await callFrnOrgHist(param.id));
+        setStockNews(await callStockNews(param.id));
     }
 
     return(
         <div className={classes.root}>
             {/* 주식종목 리스트 */}
-            <Card className={classes.stockListCard}>
+            <Card className={classes.cardArea}>
                 <CardContent>
                     {/* 매매타입 라디오버튼 */}
                     <div>
@@ -139,7 +137,7 @@ const FrnOrgTrade = (props) => {
                             columns={stockListColumns}
                             onRowClick={onRowClick}
                             page={page}
-                            pageSize={10}
+                            pageSize={5}
                             sortModel={[
                                 {
                                   field: 'sum',
@@ -150,11 +148,27 @@ const FrnOrgTrade = (props) => {
                     </div>
                 </CardContent>
             </Card>
-            {/* 주식 정보 */}
-            <Card className={classes.chart}>
+            {/* 외국인/기관 매매 상세 내역*/}
+            <Card className={classes.cardArea}>
+                <CardContent>
+                    <div>
+                        <FormLabel component="legend">외국인/기관매매 상세 내역</FormLabel>
+                        <DataGrid 
+                            className={classes.frnOrgHistTable} 
+                            rows={frnOrgHist} 
+                            columns={frnOrgHistColumns}
+                            page={0}
+                            pageSize={5}
+                        />
+                    </div>
+                </CardContent>
+            </Card>
+            {/* 주식 상세 정보 */}
+            <Card className={classes.cardArea}>
                 {/* 상단요약 */}
                 <CardContent>
                     <div>
+                        <FormLabel component="legend">주식상세정보</FormLabel>
                         <h1>{stockDetail.stockName}({stockDetail.id})</h1>
                         <span className={classNames(classes.currentPrice, parseInt(stockDetail.changedPrice) > 0 ? classes.priceUp : classes.priceDown)}>{stockDetail.currentPrice}</span> 전일대비 
                         <span className={parseInt(stockDetail.changedPrice) > 0 ? classes.priceUp : classes.priceDown}>{stockDetail.changedPrice} | {stockDetail.changedRatio}</span>
@@ -167,15 +181,18 @@ const FrnOrgTrade = (props) => {
                         alt=""
                     />
                 </CardContent>
-                {/* 외국인/기관매매 상세 테이블*/}
+            </Card>
+            {/* 종목 뉴스*/}
+            <Card className={classes.cardArea}>
                 <CardContent>
                     <div>
+                        <FormLabel component="legend">종목뉴스</FormLabel>
                         <DataGrid 
-                            className={classes.frnOrgHistTable} 
-                            rows={frnOrgHist} 
-                            columns={frnOrgHistColumns}
+                            className={classes.stockNewsTable} 
+                            rows={stockNews} 
+                            columns={stockNewsColumns}
                             page={0}
-                            pageSize={10}
+                            pageSize={5}
                         />
                     </div>
                 </CardContent>
@@ -227,6 +244,20 @@ const callStockDetail = async (stockCode) => {
 }
 
 /**
+ * 종목 뉴스 api 호출
+ * @param {*} stockCode 
+ * @returns 
+ */
+ const callStockNews = async (stockCode) => {
+    let stockNews;
+    await axios({url:process.env.NEXT_PUBLIC_API_URL + "/api/StockNews?type=" + stockCode}).then(response => {
+        stockNews = response.data;
+    });
+
+    return stockNews;
+}
+
+/**
  * SSR
  * @returns 
  */
@@ -234,13 +265,15 @@ export async function getStaticProps(context){
     const stockDataList = await callStockList("buy");                   //주식리스트
     const stockDetail   = await callStockDetail(stockDataList[0].id);   //주식상세정보
     const frnOrgHist    = await callFrnOrgHist(stockDataList[0].id);    //외국인/기관 매매 내역
-    console.log(process.env.NEXT_PUBLIC_API_URL);
+    const stockNews     = await callStockNews(stockDataList[0].id);     //종목뉴스
+    console.log(stockNews);
 
     return {
         props: {
             stockDataList : stockDataList,
             stockDetail   : stockDetail,
-            frnOrgHist    : frnOrgHist
+            frnOrgHist    : frnOrgHist,
+            stockNews     : stockNews,
         }
     }
 }

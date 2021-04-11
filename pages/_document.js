@@ -5,10 +5,10 @@ import { ServerStyleSheets } from '@material-ui/styles'; // works with @material
 export default class MyDocument extends Document {
   render() {
     return (
-      <Html lang="en">
+      <Html>
         <Head>
           {/* Not exactly required, but this is the PWA primary color */}
-          <meta/>
+          <meta charSet="EUC-KR" />
         </Head>
         <body>
           <Main />
