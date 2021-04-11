@@ -21,13 +21,12 @@ const callStockData = async (stockCode) => {
   }
   //크롤링 실행
   await axios({url:url, method:"POST",responseEncoding:"binary"}).then(response => {
-      const $ = cheerio.load(response.data);
+      const $ = cheerio.load(decodeText(response.data));
       $(".tb_cont .title").each((index, item) => {
-          //console.log(decodeText($(item).text()))
           const data = {
               id            : index,
-              title         : decodeText($(item).text()),
-              dateTime      : decodeText($(item).next().next().text().substr(0,11)),
+              title         : $(item).text(),
+              dateTime      : $(item).next().next().text().substr(0,11),
           }
 
           stockData.push(data);

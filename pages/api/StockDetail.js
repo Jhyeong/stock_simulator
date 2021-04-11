@@ -29,13 +29,13 @@ const callStockData = async (stockCode) => {
 
   //크롤링 실행
   await axios({url:url, method:"POST",responseEncoding:"binary"}).then(response => {
-      const $ = cheerio.load(response.data);
+      const $ = cheerio.load(decodeText(response.data));
     
       stockData.id = stockCode;
-      stockData.stockName = decodeText($(".wrap_company a").text());
-      stockData.currentPrice = decodeText($("#_nowVal").text());
-      stockData.changedPrice = decodeText($("#_diff .tah").text());
-      stockData.changedRatio = decodeText($("#_rate .tah").text());
+      stockData.stockName = $(".wrap_company a").text();
+      stockData.currentPrice = $("#_nowVal").text();
+      stockData.changedPrice = $("#_diff .tah").text();
+      stockData.changedRatio = $("#_rate .tah").text();
       
       if(decodeText($("#_diff .blind").text()) == "하락"){
         stockData.changedPrice = "-" + stockData.changedPrice;

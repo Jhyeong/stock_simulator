@@ -21,14 +21,14 @@ const callStockData = async (stockCode) => {
   }
   //크롤링 실행
   await axios({url:url, method:"POST",responseEncoding:"binary"}).then(response => {
-      const $ = cheerio.load(response.data);
+      const $ = cheerio.load(decodeText(response.data));
       $(".sub_section.right tbody th").each((index, item) => {
           const data = {
-              id            : decodeText($(item).text()),
-              finalPrice    : decodeText($(item).next().text()),
-              changedPrice  : decodeText($(item).next().next().text()).replace("상향", "+").replace("하향", "-").replace(/\s/g, ""),
-              frnQuantity   : decodeText($(item).next().next().next().text()),
-              orgQuantity   : decodeText($(item).next().next().next().next().text())
+              id            : $(item).text(),
+              finalPrice    : $(item).next().text(),
+              changedPrice  : $(item).next().next().text().replace("상향", "+").replace("하향", "-").replace(/\s/g, ""),
+              frnQuantity   : $(item).next().next().next().text(),
+              orgQuantity   : $(item).next().next().next().next().text()
           }
 
           stockData.push(data);

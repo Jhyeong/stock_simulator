@@ -23,12 +23,12 @@ const callStockData = async (type) => {
 
   //외국인 매매 크롤링
   await axios({url:frnUrl, method:"POST",responseEncoding:"binary"}).then(response => {
-      const $ = cheerio.load(response.data);
+      const $ = cheerio.load(decodeText(response.data));
       $(".box_type_ms:eq(1)").find("td").has(".tit").each((index, item) => {
           const data = {
-              id       : decodeText($(item).find("a").attr("href").split("=")[1]),
-              stockName: decodeText($(item).text()),
-              frnAmount: decodeText($(item).next().next().text()),
+              id       : $(item).find("a").attr("href").split("=")[1],
+              stockName: $(item).text(),
+              frnAmount: $(item).next().next().text(),
               orgAmount: 0,
               sum      : 0
           };
