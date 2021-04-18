@@ -65,6 +65,7 @@ const SideMenu = (props) => {
     }
 
     return(
+        // 메뉴 핸들링
         <Drawer
             className={classes.drawer}
             variant="persistent"
@@ -80,6 +81,7 @@ const SideMenu = (props) => {
                 </IconButton>
             </div>
         <Divider />
+        {/* 특징주 분석 */}
         <List>
             <ListItem button onClick={handleSmallMenu}>
                 <ListItemIcon><InboxIcon /></ListItemIcon>
@@ -88,20 +90,24 @@ const SideMenu = (props) => {
             </ListItem>
             <Collapse in={smallMenuOpen} timeout="auto" unmountOnExit>
                 <List component="div" disablePadding>
+                    {/* 시가총액 상위50 */}
+                    <Link href="/KospiTop50">
+                        <ListItem button className={classes.nested}>
+                            <ListItemIcon>
+                            <StarBorder />
+                            </ListItemIcon>
+                            <ListItemText primary="시가총액 상위50" />
+                        </ListItem>
+                    </Link>
+                    {/* 외국인/기관 매매 */}
                     <Link href="/FrnOrgTrade">
                         <ListItem button className={classes.nested}>
                             <ListItemIcon>
                             <StarBorder />
                             </ListItemIcon>
-                            <ListItemText primary="외국인/기관매매" />
+                            <ListItemText primary="외국인/기관 매매" />
                         </ListItem>
                     </Link>
-                    <ListItem button className={classes.nested}>
-                        <ListItemIcon>
-                        <StarBorder />
-                        </ListItemIcon>
-                        <ListItemText primary="상한가종목" />
-                    </ListItem>
                 </List>
             </Collapse>
         </List>
