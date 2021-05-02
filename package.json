@@ -2,10 +2,10 @@
   "name": "stock_simulator",
   "version": "0.1.0",
   "private": true,
-  "homepage" : "https://jhyeong.github.io/stock_simulator/",
+  "homepage": "https://jhyeong.github.io/stock_simulator/",
   "scripts": {
     "dev": "next dev",
-    "git" : "git push origin master",
+    "git": "git push origin master",
     "build": "next build --debug",
     "export": "next export",
     "deploy": "gh-pages -d build",
@@ -28,6 +28,7 @@
     "react": "17.0.1",
     "react-dom": "17.0.1",
     "react-jss": "^10.6.0",
-    "styled-components": "^5.2.1"
+    "styled-components": "^5.2.1",
+    "styled-jsx": "^3.4.4"
   }
 }

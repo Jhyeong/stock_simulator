@@ -1,5 +1,5 @@
 import React from 'react';
-import Link from 'next/link'
+import Link from 'next/link';
 import { makeStyles, useTheme } from '@material-ui/core/styles';
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
 import ChevronRightIcon from '@material-ui/icons/ChevronRight';
@@ -81,11 +81,33 @@ const SideMenu = (props) => {
                 </IconButton>
             </div>
         <Divider />
-        {/* 특징주 분석 */}
+        {/* 코인 */}
         <List>
             <ListItem button onClick={handleSmallMenu}>
                 <ListItemIcon><InboxIcon /></ListItemIcon>
-                <ListItemText primary={'특징주분석'} />
+                <ListItemText primary={'코인'} />
+                {smallMenuOpen ? <ExpandLess /> : <ExpandMore />}
+            </ListItem>
+            <Collapse in={smallMenuOpen} timeout="auto" unmountOnExit>
+                <List component="div" disablePadding>
+                    {/* 코인대시보드 */}
+                    <Link href="/CoinDashboard">
+                        <ListItem button className={classes.nested}>
+                            <ListItemIcon>
+                            <StarBorder />
+                            </ListItemIcon>
+                            <ListItemText primary="코인대시보드" />
+                        </ListItem>
+                    </Link>
+                </List>
+            </Collapse>
+        </List>
+        <Divider />
+        {/* 주식 */}
+        <List>
+            <ListItem button onClick={handleSmallMenu}>
+                <ListItemIcon><InboxIcon /></ListItemIcon>
+                <ListItemText primary={'주식'} />
                 {smallMenuOpen ? <ExpandLess /> : <ExpandMore />}
             </ListItem>
             <Collapse in={smallMenuOpen} timeout="auto" unmountOnExit>

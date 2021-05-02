@@ -38,7 +38,7 @@ const Contents = (props) => {
                 [classes.contentShift]: props.open,
             })}
         >
-            <div className={classes.drawerHeader} />
+            <div className={classes.drawerHeader} ></div>
             {props.children}
         </div>
     );
