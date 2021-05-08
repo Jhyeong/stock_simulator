@@ -90,13 +90,13 @@ const SideMenu = (props) => {
             </ListItem>
             <Collapse in={smallMenuOpen} timeout="auto" unmountOnExit>
                 <List component="div" disablePadding>
-                    {/* 코인대시보드 */}
-                    <Link href="/CoinDashboard">
+                    {/* 코인정보 */}
+                    <Link href="/CoinInfo">
                         <ListItem button className={classes.nested}>
                             <ListItemIcon>
                             <StarBorder />
                             </ListItemIcon>
-                            <ListItemText primary="코인대시보드" />
+                            <ListItemText primary="코인정보" />
                         </ListItem>
                     </Link>
                 </List>

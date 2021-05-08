@@ -31,7 +31,7 @@ const Index = (props) => {
     <div className={classes.root}>
         {/* 코인 */}
         <div className={classes.cardDiv}>
-          <Link href="/KospiTop50">
+          <Link href="/CoinInfo">
             <Card className={classes.cardArea}>
                 <CardContent>
                   <img className={classes.icons} src="/BTCIcon.png"/>
