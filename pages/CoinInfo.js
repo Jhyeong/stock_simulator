@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { makeStyles } from '@material-ui/core/styles';
 import Table from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
@@ -8,7 +8,7 @@ import TableContainer from '@material-ui/core/TableContainer';
 import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
 import Paper from '@material-ui/core/Paper';
-import io from 'socket.io-client';
+import Timer from '../components/Timer';
 
 const useStyles = makeStyles({
     paper: {
@@ -34,6 +34,9 @@ const useStyles = makeStyles({
     },
     even: {
         color: 'gray'
+    },
+    tr:{
+        borderColor: 'red'
     }
 });
 
@@ -44,51 +47,64 @@ const useStyles = makeStyles({
 
 const CoinInfo = (props) => {
     const classes = useStyles();
-    const [coinList, setCoinList] = useState([]);
+    let websocket;
+    const [coinList, setCoinList] = useState(props.coinList);
+    const [timerState, setTimerState] = useState("start");
 
-    //코인 목록 호출
-    const callCoinList = async (type) => {
-        await axios({url:process.env.NEXT_PUBLIC_API_URL + "/api/CoinInfo"}).then(response => {
-            getRealTimeCoinInfo(response.data);
-        });
+    useEffect(() => {
+        getRealTimeCoinInfo();
+    }, []);
+
+    //실시간 코인 정보 호출
+    const getRealTimeCoinInfo = () =>{
+        websocket = new WebSocket("wss://api.upbit.com/websocket/v1");
+        websocket.binaryType = 'arraybuffer';
+        websocket.onopen    = onOpenWebsocket;
+        websocket.onclose   = onCloseWebsocket;
+        websocket.onmessage = onMessageWebsocket;
+        websocket.onerror   = onErrorWebsocket;
     }
 
-    const getRealTimeCoinInfo = (coinList) =>{
+    //웹소켓 open
+    const onOpenWebsocket = () =>{
+        console.log("업비트 opened");
         let markets = [];
-        const websocket = new WebSocket("wss://api.upbit.com/websocket/v1");
-        websocket.binaryType = 'arraybuffer';
-        
-        websocket.onopen = () =>{
-            console.log("업비트 opened");
-            //검색할 마켓 셋팅
-            coinList.map((item) => {
-                markets.push(item.market);
-            });
-            websocket.send(JSON.stringify([{"ticket":guid()},{"type":"ticker","codes": markets}]));
-        }
+        //검색할 마켓 셋팅
+        coinList.map((item) => {
+            markets.push(item.market);
+        });
+        websocket.send(JSON.stringify([{"ticket":guid()},{"type":"ticker","codes": markets}]));//isOnlySnapshot
+    }
+    
+    const onCloseWebsocket = () =>{
+        console.log("업비트 closed");
+    }
 
-        websocket.onerror = () =>{
-            alert("업비트 시세 수신에 실패하였습니다.");
-        }
+    const onMessageWebsocket = (result) =>{
+        const enc = new TextDecoder("utf-8");
+        let coinData = JSON.parse(enc.decode(new Uint8Array(result.data)));
+        coinList.map((item) => {
+            //item.market == coinData.code ? {...item, trade_price: 1} : item;
+            if(item.market == coinData.code){
+                item.trade_price          = coinData.trade_price.toLocaleString("ko-KR");
+                item.signed_change_rate   = (coinData.signed_change_rate * 100).toFixed(2) + "%";
+                item.acc_trade_price_24h  = (coinData.acc_trade_price_24h.toFixed(0) * 0.00000001).toLocaleString("ko-KR") + "백만";
+                item.change               = coinData.change;
+            }
+        });
 
-        websocket.onclose = () =>{
-            console.log("업비트 closed");
-        }
+        setCoinList(coinList.slice());
+        coinData = null;
+    }
 
-        websocket.onmessage = (result) =>{
-            const enc = new TextDecoder("utf-8");
-			const coinData = JSON.parse(enc.decode(new Uint8Array(result.data)));
+    const onErrorWebsocket = () =>{
+        alert("업비트 시세 수신에 실패하였습니다.");
+    }
 
-            coinList.map((item) => {
-                //item.market == coinData.code ? {...item, trade_price: 1} : item;
-                if(item.market == coinData.code){
-                    item.trade_price          = coinData.trade_price.toLocaleString("ko-KR");
-                    item.signed_change_rate   = (coinData.signed_change_rate * 100).toFixed(2) + "%";
-                    item.acc_trade_price_24h  = (coinData.acc_trade_price_24h.toFixed(0) * 0.00000001).toLocaleString("ko-KR") + "백만";
-                }
-            });
-
-            setCoinList(coinList.slice());
+    window.onbeforeunload = () => {
+        console.log("unload");
+        if(websocket){
+            websocket.close();
         }
     }
 
@@ -100,9 +116,15 @@ const CoinInfo = (props) => {
         return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
     }
 
+    const setTimer = () => {
+        setTimerState("start");
+    }
     return(
         <div>
-            <button onClick={callCoinList}>코인목록 불러오기</button>
+            <button onClick={setTimer}>타이머</button>
+            <div>
+                <Timer timerState={timerState}></Timer>
+            </div>
             <TableContainer className={classes.paper} component={Paper}>
                 <Table className={classes.table} aria-label="simple table">
                     <TableHead >
@@ -110,12 +132,13 @@ const CoinInfo = (props) => {
                             <TableCell className={classes.th} align="center">마켓명</TableCell>
                             <TableCell className={classes.th} align="center">등락</TableCell>
                             <TableCell className={classes.th} align="center">현재가</TableCell>
+                            <TableCell className={classes.th} align="center">5분전 대비</TableCell>
                             <TableCell className={classes.th} align="center">거래대금</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
                         {coinList.map((item) => (
-                            <TableRow key={item.market} hover={true}>
+                            <TableRow key={item.market} hover={true} className={classes.tr}>
                                 <TableCell align="center" padding="none">
                                     <p className={classes.korean_name}>{item.korean_name}</p>
                                     <p>{item.market}</p>
@@ -141,6 +164,12 @@ const CoinInfo = (props) => {
                                 >
                                     <p>{item.acc_trade_price_24h}</p>
                                 </TableCell>
+                                <TableCell
+                                    align="center"
+                                    padding="none"
+                                >
+                                    <p>{item.acc_trade_price_24h}</p>
+                                </TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
@@ -150,6 +179,34 @@ const CoinInfo = (props) => {
             
         </div>
     );
+}
+
+/**
+ * 거래대금 상위 20 코인 목록 호출
+ * @param {*} type 
+ * @returns 
+ */
+const callCoinList = async (type) => {
+    let coinList;
+    await axios({url:process.env.NEXT_PUBLIC_API_URL + "/api/CoinInfo"}).then(response => {
+        coinList = response.data;
+    });
+
+    return coinList;
+}
+
+/**
+ * SSR
+ * @returns 
+ */
+ export async function getServerSideProps(){
+    const coinList = await callCoinList();
+
+    return {
+        props: {
+            coinList : coinList
+        }
+    }
 }
 
 export default CoinInfo;
