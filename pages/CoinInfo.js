@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { makeStyles } from '@material-ui/core/styles';
 import Table from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
@@ -12,10 +13,7 @@ import Timer from '../components/Timer';
 
 const useStyles = makeStyles({
     paper: {
-        width: 450,
-    },
-    table: {
-      width: 450,
+        width: 600,
     },
     th: {
         fontSize: 15,
@@ -49,11 +47,35 @@ const CoinInfo = (props) => {
     const classes = useStyles();
     let websocket;
     const [coinList, setCoinList] = useState(props.coinList);
-    const [timerState, setTimerState] = useState("start");
+    const {min, sec} = useSelector(state => ({min : state.timer.min, sec : state.timer.sec}));
 
     useEffect(() => {
         getRealTimeCoinInfo();
     }, []);
+
+    //5분 단위로 종가 저장
+    useEffect(() => {
+        if(min == 0 && sec == 0){
+                coinList.map((item) => {
+                    item.beforePrice = item.trade_price;
+                });
+        }else{
+            coinList.map((item) => {
+                // console.log(item.market + " before : " + parseInt(item.trade_price, 10) + " after : " + parseInt(item.beforePrice, 10) + " beforeChange :" + item.beforeChange);
+                item.beforeChange = item.beforePrice == null ? 0 : toNumber(item.trade_price) - toNumber(item.beforePrice);
+                item.beforeRate   = (item.beforeChange / toNumber(item.beforePrice) * 100).toFixed(2) + "%";
+                item.beforeChange = item.beforeChange.toLocaleString("ko-KR");
+                // if(item.beforeChange > 0){
+                //     item.beforeRate = (item.beforeChange / item.beforePrice * 100).toFixed(2) + "%";
+                // }else if(item.beforeChange < 0){
+                //     item.beforeRate = (item.beforeChange / item.beforePrice * 100).toFixed(2) + "%";
+                // }else{
+                //     item.beforeRate = "0.00%";
+                // }
+            });
+        }
+        setCoinList(coinList.slice());
+    }, [min, sec]);
 
     //실시간 코인 정보 호출
     const getRealTimeCoinInfo = () =>{
@@ -90,23 +112,17 @@ const CoinInfo = (props) => {
                 item.signed_change_rate   = (coinData.signed_change_rate * 100).toFixed(2) + "%";
                 item.acc_trade_price_24h  = (coinData.acc_trade_price_24h.toFixed(0) * 0.00000001).toLocaleString("ko-KR") + "백만";
                 item.change               = coinData.change;
+                if(item.beforePrice == null){
+                    item.beforePrice          = coinData.trade_price.toLocaleString("ko-KR");
+                }
             }
         });
-
-        setCoinList(coinList.slice());
-        coinData = null;
     }
 
     const onErrorWebsocket = () =>{
         alert("업비트 시세 수신에 실패하였습니다.");
     }
 
-    window.onbeforeunload = () => {
-        console.log("unload");
-        if(websocket){
-            websocket.close();
-        }
-    }
 
     //uuid 생성
     const guid = () => {
@@ -116,14 +132,19 @@ const CoinInfo = (props) => {
         return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
     }
 
-    const setTimer = () => {
-        setTimerState("start");
+    //문자형 금액을 int형으로 리턴
+    const toNumber = (val) => {
+        if(val != ""){
+            return parseInt(val.replace(/,/g, ""), 10);
+        }
+        return val;
     }
+
     return(
         <div>
-            <button onClick={setTimer}>타이머</button>
+            <button>타이머</button>
             <div>
-                <Timer timerState={timerState}></Timer>
+                <Timer></Timer>
             </div>
             <TableContainer className={classes.paper} component={Paper}>
                 <Table className={classes.table} aria-label="simple table">
@@ -139,10 +160,12 @@ const CoinInfo = (props) => {
                     <TableBody>
                         {coinList.map((item) => (
                             <TableRow key={item.market} hover={true} className={classes.tr}>
+                                {/* 마켓명 */}
                                 <TableCell align="center" padding="none">
                                     <p className={classes.korean_name}>{item.korean_name}</p>
                                     <p>{item.market}</p>
                                 </TableCell>
+                                {/* 등락 */}
                                 <TableCell 
                                     className={item.change == "RISE" ? classes.rise : item.change == "FALL" ? classes.fall : classes.even}
                                     align="center"
@@ -150,6 +173,7 @@ const CoinInfo = (props) => {
                                 >
                                     <p>{item.change == "RISE" ? "상승" : item.change == "FALL" ? "하락" : "보합"}</p>
                                 </TableCell>
+                                {/* 현재가 */}
                                 <TableCell 
                                     className={item.change == "RISE" ? classes.rise : item.change == "FALL" ? classes.fall : classes.even}
                                     align="center"
@@ -158,12 +182,16 @@ const CoinInfo = (props) => {
                                     <p>{item.trade_price}</p>
                                     <p>{item.signed_change_rate}</p>    
                                 </TableCell>
+                                {/* 5분전 대비 */}
                                 <TableCell
+                                    className={toNumber(item.beforeChange) > 0 ? classes.rise : toNumber(item.beforeChange) < 0 ? classes.fall : classes.even}
                                     align="center"
                                     padding="none"
                                 >
-                                    <p>{item.acc_trade_price_24h}</p>
+                                    <p>{item.beforeChange}</p>
+                                    <p>{item.beforeRate}</p>
                                 </TableCell>
+                                {/* 거래대금 */}
                                 <TableCell
                                     align="center"
                                     padding="none"

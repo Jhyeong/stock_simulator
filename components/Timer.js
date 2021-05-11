@@ -16,7 +16,6 @@ const Timer = (props) => {
     //타이머 시작
     useEffect(() => {
         timer = setInterval(() =>{
-            console.log(props.timerState);
             if(parseInt(sec) < 59){
                 dispatch(actionPlusSec());
             }else{
