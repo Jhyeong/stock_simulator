@@ -134,8 +134,8 @@ const CoinInfo = (props) => {
 
     //문자형 금액을 int형으로 리턴
     const toNumber = (val) => {
-        if(val != ""){
-            return val;
+        if(val != null && val != ""){
+            return parseInt(val.replace(/,/g, ""), 10);
         }
         return val;
     }
