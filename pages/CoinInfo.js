@@ -55,13 +55,15 @@ const CoinInfo = (props) => {
 
     //5분 단위로 종가 저장 및 텔레그램 전송
     useEffect(() => {
-        if(min == 0 && sec == 10){
+        if(min == 0 && sec == 0){
                 coinList.map((item) => {
-                    if(item.beforeChangedRate && parseInt(item.beforeChangedRate) >= 0){
+                    if(item.beforeChangedRate && parseInt(item.beforeChangedRate) >= 5){
                         callTelegramAPI("떡상코인 : " + item.korean_name + "[" + item.beforeChangedRate + "]");
                     }
 
                     item.beforePrice = item.trade_price;
+                    item.beforeChangedPrice = 0;
+                    item.beforeChangedRate = "0.00%";
                 });
         }else{
             coinList.map((item) => {
