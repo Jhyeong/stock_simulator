@@ -57,6 +57,7 @@ const callCoinList = async () => {
                   detailItem.trade_price          = detailItem.trade_price.toLocaleString("ko-KR");
                   detailItem.signed_change_rate   = (detailItem.signed_change_rate * 100).toFixed(2) + "%";
                   detailItem.acc_trade_price_24h  = (detailItem.acc_trade_price_24h.toFixed(0) * 0.00000001).toLocaleString("ko-KR") + "백만";
+                  detailItem.beforePrice          = detailItem.trade_price.toLocaleString("ko-KR");
               }
           });
       });

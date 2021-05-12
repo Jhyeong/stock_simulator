@@ -53,25 +53,21 @@ const CoinInfo = (props) => {
         getRealTimeCoinInfo();
     }, []);
 
-    //5분 단위로 종가 저장
+    //5분 단위로 종가 저장 및 텔레그램 전송
     useEffect(() => {
-        if(min == 0 && sec == 0){
+        if(min == 0 && sec == 10){
                 coinList.map((item) => {
+                    if(item.beforeChangedRate && parseInt(item.beforeChangedRate) >= 5){
+                        callTelegramAPI("떡상코인 : " + item.korean_name + "[" + item.beforeChangedRate + "]");
+                    }
+
                     item.beforePrice = item.trade_price;
                 });
         }else{
             coinList.map((item) => {
-                // console.log(item.market + " before : " + parseInt(item.trade_price, 10) + " after : " + parseInt(item.beforePrice, 10) + " beforeChange :" + item.beforeChange);
-                item.beforeChange = item.beforePrice == null ? 0 : toNumber(item.trade_price) - toNumber(item.beforePrice);
-                item.beforeRate   = (item.beforeChange / toNumber(item.beforePrice) * 100).toFixed(2) + "%";
-                item.beforeChange = item.beforeChange.toLocaleString("ko-KR");
-                // if(item.beforeChange > 0){
-                //     item.beforeRate = (item.beforeChange / item.beforePrice * 100).toFixed(2) + "%";
-                // }else if(item.beforeChange < 0){
-                //     item.beforeRate = (item.beforeChange / item.beforePrice * 100).toFixed(2) + "%";
-                // }else{
-                //     item.beforeRate = "0.00%";
-                // }
+                item.beforeChangedPrice = item.beforePrice == null ? 0 : toNumber(item.trade_price) - toNumber(item.beforePrice);
+                item.beforeChangedRate   = (item.beforeChangedPrice / toNumber(item.beforePrice) * 100).toFixed(2) + "%";
+                item.beforeChangedPrice = item.beforeChangedPrice.toLocaleString("ko-KR");
             });
         }
         setCoinList(coinList.slice());
@@ -142,7 +138,7 @@ const CoinInfo = (props) => {
 
     return(
         <div>
-            <button>타이머</button>
+            <button onClick={callTelegramAPI}>테스트</button>
             <div>
                 <Timer></Timer>
             </div>
@@ -184,12 +180,12 @@ const CoinInfo = (props) => {
                                 </TableCell>
                                 {/* 5분전 대비 */}
                                 <TableCell
-                                    className={toNumber(item.beforeChange) > 0 ? classes.rise : toNumber(item.beforeChange) < 0 ? classes.fall : classes.even}
+                                    className={toNumber(item.beforeChangedPrice) > 0 ? classes.rise : toNumber(item.beforeChangedPrice) < 0 ? classes.fall : classes.even}
                                     align="center"
                                     padding="none"
                                 >
-                                    <p>{item.beforeChange}</p>
-                                    <p>{item.beforeRate}</p>
+                                    <p>{item.beforeChangedPrice}</p>
+                                    <p>{item.beforeChangedRate}</p>
                                 </TableCell>
                                 {/* 거래대금 */}
                                 <TableCell
@@ -207,6 +203,20 @@ const CoinInfo = (props) => {
             
         </div>
     );
+}
+
+/**
+ * 거래대금 상위 20 코인 목록 호출
+ * @param {*} type 
+ * @returns 
+ */
+ const callTelegramAPI = async (msg) => {
+    let coinList;
+    await axios({url:process.env.NEXT_PUBLIC_API_URL + "/api/TelegramAPI?msg=" + msg}).then(response => {
+        coinList = response.data;
+    });
+
+    return coinList;
 }
 
 /**
