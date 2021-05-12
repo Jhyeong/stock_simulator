@@ -57,7 +57,7 @@ const CoinInfo = (props) => {
     useEffect(() => {
         if(min == 0 && sec == 10){
                 coinList.map((item) => {
-                    if(item.beforeChangedRate && parseInt(item.beforeChangedRate) >= 5){
+                    if(item.beforeChangedRate && parseInt(item.beforeChangedRate) >= 0){
                         callTelegramAPI("떡상코인 : " + item.korean_name + "[" + item.beforeChangedRate + "]");
                     }
 
