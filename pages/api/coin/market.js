@@ -4,36 +4,22 @@ import crypto from 'crypto-js';
 import querystring from 'querystring';
 
 export default async (req, res) => {
-    switch(req.query.type){
-        //코인리스트
-        case "coinList" : 
-            res.status(200).json(await callCoinList());
-            break;
-        //계좌정보
-        case "account" :
-            res.status(200).json(await callAccount());
-            break;
-        //주문
-        case "trade" : 
-            res.status(200).json(await callTrade(req.query.market, req.query.tradeType));
-            break;
-    }
+    res.status(200).json(await callAPI());
 }
 
 /**
- * 코인리스트
- * 
+ * 마켓정보
  * @param {}} type 
  * @returns 
  */
-const callCoinList = async () => {
+const callAPI = async () => {
     const coinListurl     = 'https://api.upbit.com/v1/market/all?isDetails=true';
     let coinDetailUrl     = 'https://api.upbit.com/v1/ticker?markets=';
     let coinAllList       = [];
     let coinDetailList    = [];
   
     //코인 전체 목록 호출
-    await axios({url:coinListurl, method:"GET"}).then(response => {
+    await axios({method:"GET", url:coinListurl}).then(response => {
       coinAllList = response.data;
   
       //상세정보를 호출할 마켓명을 url에 셋팅
@@ -50,7 +36,7 @@ const callCoinList = async () => {
   
   
     //코인 상세 정보 호출
-    await axios({url:coinDetailUrl, method:"GET"}).then(response => {
+    await axios({method:"GET", url:coinDetailUrl}).then(response => {
       coinDetailList = response.data;
   
       //누적거래대금으로 내림차순 정렬
@@ -63,7 +49,7 @@ const callCoinList = async () => {
       //상위 20개
       coinDetailList.splice(20, coinDetailList.length - 20);
   
-      //마켓 한국명 맵핑 & 포맷 설정
+      //기본 값 설정
       coinDetailList.map((detailItem) => {
           coinAllList.map((allItem) => {
               if(detailItem.market == allItem.market){
@@ -72,6 +58,11 @@ const callCoinList = async () => {
                   detailItem.signed_change_rate   = (detailItem.signed_change_rate * 100).toFixed(2) + "%";
                   detailItem.acc_trade_price_24h  = (detailItem.acc_trade_price_24h.toFixed(0) * 0.00000001).toLocaleString("ko-KR") + "백만";
                   detailItem.beforePrice          = detailItem.trade_price.toLocaleString("ko-KR");
+                  detailItem.ownVolume            = 0;//매수량
+                  detailItem.ownPrice             = 0;//매수가
+                  detailItem.avgPrice             = 0;//평단
+                  detailItem.profitRate           = 0;//수익률
+                  detailItem.profitPrice          = 0;//수익금액
               }
           });
       });

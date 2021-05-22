@@ -10,6 +10,8 @@ import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
 import Paper from '@material-ui/core/Paper';
 import Timer from '../components/Timer';
+import market from './api/coin/market';
+import querystring from 'querystring';
 
 const useStyles = makeStyles({
     paper: {
@@ -34,7 +36,7 @@ const useStyles = makeStyles({
         color: 'gray'
     },
     tr:{
-        borderColor: 'red'
+        borderColor: 'red',
     }
 });
 
@@ -46,35 +48,55 @@ const useStyles = makeStyles({
 const CoinInfo = (props) => {
     const classes = useStyles();
     let websocket;
-    const [coinList, setCoinList] = useState(props.coinList);
+    const [marketList, setMarketList] = useState(props.marketList);
+    const [account, setAccount]   = useState(props.account);
     const {min, sec} = useSelector(state => ({min : state.timer.min, sec : state.timer.sec}));
 
     useEffect(() => {
+        mappingAccount();
         getRealTimeCoinInfo();
-
     }, []);
 
-    //5분 단위로 종가 저장 및 텔레그램 전송
+    //5분 단위로 종가 저장, 수익률 계산 및 텔레그램 전송
     useEffect(() => {
         if(min == 0 && sec == 0){
-                coinList.map((item) => {
-                    if(item.beforeChangedRate && parseInt(item.beforeChangedRate) >= 5){
-                        callTelegramAPI("떡상코인 : " + item.korean_name + "[" + item.beforeChangedRate + "]");
+                marketList.map((market) => {
+                    if(market.beforeChangedRate && parseInt(market.beforeChangedRate) >= 5){
+                        callTelegramAPI("떡상코인 : " + market.korean_name + "[" + market.beforeChangedRate + "]");
                     }
 
-                    item.beforePrice = item.trade_price;
-                    item.beforeChangedPrice = 0;
-                    item.beforeChangedRate = "0.00%";
+                    market.beforePrice = market.trade_price;
+                    market.beforeChangedPrice = 0;
+                    market.beforeChangedRate = "0.00%";
                 });
         }else{
-            coinList.map((item) => {
-                item.beforeChangedPrice = item.beforePrice == null ? 0 : toNumber(item.trade_price) - toNumber(item.beforePrice);
-                item.beforeChangedRate   = (item.beforeChangedPrice / toNumber(item.beforePrice) * 100).toFixed(2) + "%";
-                item.beforeChangedPrice = item.beforeChangedPrice.toLocaleString("ko-KR");
+            marketList.map((market) => {
+                market.beforeChangedPrice = market.beforePrice == null ? 0 : toNumber(market.trade_price) - toNumber(market.beforePrice);
+                market.beforeChangedRate   = (market.beforeChangedPrice / toNumber(market.beforePrice) * 100).toFixed(2) + "%";
+                market.beforeChangedPrice = market.beforeChangedPrice.toLocaleString("ko-KR");
+                if(market.avgPrice > 0){
+                    market.profitRate       = (((toNumber(market.trade_price) / market.avgPrice) * 100) - 100).toFixed(2); //수익률
+                    market.profitPrice      = toCurrency(((toNumber(market.trade_price) - market.avgPrice)) * market.ownVolume)//수익금액
+                }
             });
         }
-        setCoinList(coinList.slice());
+
+        setMarketList(marketList.slice());
     }, [min, sec]);
+
+    /**
+     * 마켓정보와 계좌정보 맵핑
+     */
+    const mappingAccount = () => {
+        account.map((account) => {
+            let market = marketList.find(market => market.market == account.unit_currency + '-' + account.currency);
+            if(market){
+                market.avgPrice         = toNumber(account.avg_buy_price).toFixed(0);                  //평단
+                market.ownPrice         = toNumber(account.avg_buy_price * account.balance).toFixed(0) //매수금액
+                market.ownVolume        = account.balance;                                             //매수량
+            }
+        });
+    }
 
     //실시간 코인 정보 호출
     const getRealTimeCoinInfo = () =>{
@@ -89,12 +111,12 @@ const CoinInfo = (props) => {
     //웹소켓 open
     const onOpenWebsocket = () =>{
         console.log("업비트 opened");
-        let markets = [];
+        let marketLists = [];
         //검색할 마켓 셋팅
-        coinList.map((item) => {
-            markets.push(item.market);
+        marketList.map((market) => {
+            marketLists.push(market.market);
         });
-        websocket.send(JSON.stringify([{"ticket":guid()},{"type":"ticker","codes": markets}]));//isOnlySnapshot
+        websocket.send(JSON.stringify([{"ticket":guid()},{"type":"ticker","codes": marketLists}]));//isOnlySnapshot
     }
     
     const onCloseWebsocket = () =>{
@@ -104,15 +126,14 @@ const CoinInfo = (props) => {
     const onMessageWebsocket = (result) =>{
         const enc = new TextDecoder("utf-8");
         let coinData = JSON.parse(enc.decode(new Uint8Array(result.data)));
-        coinList.map((item) => {
-            //item.market == coinData.code ? {...item, trade_price: 1} : item;
-            if(item.market == coinData.code){
-                item.trade_price          = coinData.trade_price.toLocaleString("ko-KR");
-                item.signed_change_rate   = (coinData.signed_change_rate * 100).toFixed(2) + "%";
-                item.acc_trade_price_24h  = (coinData.acc_trade_price_24h.toFixed(0) * 0.00000001).toLocaleString("ko-KR") + "백만";
-                item.change               = coinData.change;
-                if(item.beforePrice == null){
-                    item.beforePrice          = coinData.trade_price.toLocaleString("ko-KR");
+        marketList.map((market) => {
+            if(market.market == coinData.code){
+                market.trade_price          = coinData.trade_price.toLocaleString("ko-KR");
+                market.signed_change_rate   = (coinData.signed_change_rate * 100).toFixed(2) + "%";
+                market.acc_trade_price_24h  = (coinData.acc_trade_price_24h.toFixed(0) * 0.00000001).toLocaleString("ko-KR") + "백만";
+                market.change               = coinData.change;
+                if(market.beforePrice == null){
+                    market.beforePrice          = coinData.trade_price.toLocaleString("ko-KR");
                 }
             }
         });
@@ -122,7 +143,6 @@ const CoinInfo = (props) => {
         alert("업비트 시세 수신에 실패하였습니다.");
     }
 
-
     //uuid 생성
     const guid = () => {
         const s4 = () => {
@@ -131,18 +151,27 @@ const CoinInfo = (props) => {
         return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
     }
 
-    //문자형 금액을 int형으로 리턴
+    //문자형 금액을 int형으로 변경
     const toNumber = (val) => {
-        if(val != null && val != ""){
-            return parseInt(val.replace(/,/g, ""), 10);
+        if(typeof val == "string"){
+            val = parseInt(val.replace(/,/g, ""), 10);
         }
+        return val;
+    }
+
+    //숫자를 금액포맷으로 변경
+    const toCurrency = (val) => {
+        if(typeof val == "number"){
+            val = parseInt(val.toFixed(0), 10).toLocaleString("ko-KR");
+        }
+
         return val;
     }
 
     /**
      * 매수주문
      */
-    const callAPIBuy = async () => {
+    const callTradeAPI = async (type) => {
         await callCoinList('BTC-KRW', 'buy', '5000');
     }
 
@@ -155,8 +184,8 @@ const CoinInfo = (props) => {
 
     return(
         <div>
-            <button onClick={callAPIAccount}>계좌조회</button>
-            <button onClick={callAPIBuy}>매수하기</button>
+            <button onClick={callAccountAPI}>계좌조회</button>
+            <button onClick={callTradeAPI}>매수하기</button>
             <button onClick={callAPISell}>매도하기</button>
             <div>
                 <Timer></Timer>
@@ -169,49 +198,59 @@ const CoinInfo = (props) => {
                             <TableCell className={classes.th} align="center">등락</TableCell>
                             <TableCell className={classes.th} align="center">현재가</TableCell>
                             <TableCell className={classes.th} align="center">5분전 대비</TableCell>
+                            <TableCell className={classes.th} align="center">보유코인<br/>평가손익</TableCell>
                             <TableCell className={classes.th} align="center">거래대금</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {coinList.map((item) => (
-                            <TableRow key={item.market} hover={true} className={classes.tr}>
+                        {marketList.map((market) => (
+                            <TableRow key={market.market} hover={true} className={classes.tr}>
                                 {/* 마켓명 */}
                                 <TableCell align="center" padding="none">
-                                    <p className={classes.korean_name}>{item.korean_name}</p>
-                                    <p>{item.market}</p>
+                                    <p className={classes.korean_name}>{market.korean_name}</p>
+                                    <p>{market.market}</p>
                                 </TableCell>
                                 {/* 등락 */}
                                 <TableCell 
-                                    className={item.change == "RISE" ? classes.rise : item.change == "FALL" ? classes.fall : classes.even}
+                                    className={market.change == "RISE" ? classes.rise : market.change == "FALL" ? classes.fall : classes.even}
                                     align="center"
                                     padding="none"
                                 >
-                                    <p>{item.change == "RISE" ? "상승" : item.change == "FALL" ? "하락" : "보합"}</p>
+                                    <p>{market.change == "RISE" ? "상승" : market.change == "FALL" ? "하락" : "보합"}</p>
                                 </TableCell>
                                 {/* 현재가 */}
                                 <TableCell 
-                                    className={item.change == "RISE" ? classes.rise : item.change == "FALL" ? classes.fall : classes.even}
+                                    className={market.change == "RISE" ? classes.rise : market.change == "FALL" ? classes.fall : classes.even}
                                     align="center"
                                     padding="none"
                                 >
-                                    <p>{item.trade_price}</p>
-                                    <p>{item.signed_change_rate}</p>    
+                                    <p>{market.trade_price}</p>
+                                    <p>{market.signed_change_rate}</p>    
                                 </TableCell>
                                 {/* 5분전 대비 */}
                                 <TableCell
-                                    className={toNumber(item.beforeChangedPrice) > 0 ? classes.rise : toNumber(item.beforeChangedPrice) < 0 ? classes.fall : classes.even}
+                                    className={toNumber(market.beforeChangedPrice) > 0 ? classes.rise : toNumber(market.beforeChangedPrice) < 0 ? classes.fall : classes.even}
                                     align="center"
                                     padding="none"
                                 >
-                                    <p>{item.beforeChangedPrice}</p>
-                                    <p>{item.beforeChangedRate}</p>
+                                    <p>{market.beforeChangedPrice}</p>
+                                    <p>{market.beforeChangedRate}</p>
+                                </TableCell>
+                                {/* 보유코인 평가손익 */}
+                                <TableCell
+                                    className={market.profitRate > 0 ? classes.rise : market.profitRate < 0 ? classes.fall : classes.even}
+                                    align="center"
+                                    padding="none"
+                                >
+                                    <p>{market.profitPrice}</p>
+                                    <p>{market.profitRate}%</p>
                                 </TableCell>
                                 {/* 거래대금 */}
                                 <TableCell
                                     align="center"
                                     padding="none"
                                 >
-                                    <p>{item.acc_trade_price_24h}</p>
+                                    <p>{market.acc_trade_price_24h}</p>
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -225,17 +264,17 @@ const CoinInfo = (props) => {
 }
 
 /**
- * 거래대금 상위 20 코인 목록 호출
+ * 텔레그램 api 호출
  * @param {*} type 
  * @returns 
  */
  const callTelegramAPI = async (msg) => {
-    let coinList;
+    let resultData = [];
     await axios({url:process.env.NEXT_PUBLIC_API_URL + "/api/TelegramAPI?msg=" + msg}).then(response => {
-        coinList = response.data;
+        resultData = response.data;
     });
 
-    return coinList;
+    return resultData;
 }
 
 /**
@@ -243,22 +282,23 @@ const CoinInfo = (props) => {
  * @param {*} type 
  * @returns 
  */
-const callCoinList = async (type) => {
-    let coinList;
-    await axios({url:process.env.NEXT_PUBLIC_API_URL + "/api/CoinInfo?type="+type}).then(response => {
-        coinList = response.data;
+const callMarketAPI = async () => {
+    let resultData = [];
+
+    await axios({url:process.env.NEXT_PUBLIC_API_URL + '/api/coin/market'}).then(response => {
+        resultData = response.data;
     });
 
-    return coinList;
+    return resultData;
 }
 
 /**
- * 거래대금 상위 20 코인 목록 호출
+ * 계좌정보조회
  * @param {*} type 
  * @returns 
  */
- const callAPIAccount = async () => {
-    let resultData;
+ const callAccountAPI = async () => {
+    let resultData = [];
     await axios({url:process.env.NEXT_PUBLIC_API_URL + '/api/coin/account'}).then(response => {
         resultData = response.data;
     });
@@ -267,15 +307,41 @@ const callCoinList = async (type) => {
 }
 
 /**
+ * 주문하기
+ * @param {*} type   
+ * @param {*} market 
+ * @param {*} price 
+ * @returns 
+ */
+const callTradeAPI = async (type, market, price) => {
+    let marketList;
+    const param = {
+        type : type,
+        market : market,
+        price : price
+    };
+
+    const query = querystring.encode(param);
+
+    await axios({url:process.env.NEXT_PUBLIC_API_URL + '/api/coin/market?' + query}).then(response => {
+        marketList = response.data;
+    });
+
+    return marketList;
+}
+
+/**
  * SSR
  * @returns 
  */
  export async function getServerSideProps(){
-    const coinList = await callCoinList("coinList");
+    const marketList = await callMarketAPI();
+    const account  = await callAccountAPI();
 
     return {
         props: {
-            coinList : coinList
+            marketList : marketList,
+            account  : account,
         }
     }
 }

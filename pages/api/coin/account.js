@@ -11,6 +11,7 @@ export default async (req, res) => {
  * 계좌정보 조회
  */
 const callAPI = async () => {
+    let resultData = [];
     const url = "https://api.upbit.com/v1/accounts";
     const payload = {
         access_key: process.env.JWT_ACCESS_CODE,
@@ -21,11 +22,13 @@ const callAPI = async () => {
     const authorizationToken = `Bearer ${jwtToken}`;
 
     await axios({url:url, method:"GET", headers: {Authorization : authorizationToken}}).then(response => {
-        console.log(response.data);
-        return response.data;
+        resultData = response.data;
     }).catch(error => {
-          console.log(error);
+        console.log(error);
     });
+
+    console.log(resultData)
+    return resultData;
 }
 
 //uuid 생성
