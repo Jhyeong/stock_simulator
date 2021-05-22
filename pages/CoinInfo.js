@@ -51,7 +51,7 @@ const CoinInfo = (props) => {
 
     useEffect(() => {
         getRealTimeCoinInfo();
-        
+
     }, []);
 
     //5분 단위로 종가 저장 및 텔레그램 전송
@@ -139,9 +139,25 @@ const CoinInfo = (props) => {
         return val;
     }
 
+    /**
+     * 매수주문
+     */
+    const callAPIBuy = async () => {
+        await callCoinList('BTC-KRW', 'buy', '5000');
+    }
+
+    /**
+     * 매도주문
+     */
+    const callAPISell = async () => {
+        await callCoinList('BTC-KRW', 'buy', '5000');
+    }
+
     return(
         <div>
-            <button onClick={callTelegramAPI}>테스트</button>
+            <button onClick={callAPIAccount}>계좌조회</button>
+            <button onClick={callAPIBuy}>매수하기</button>
+            <button onClick={callAPISell}>매도하기</button>
             <div>
                 <Timer></Timer>
             </div>
@@ -229,7 +245,7 @@ const CoinInfo = (props) => {
  */
 const callCoinList = async (type) => {
     let coinList;
-    await axios({url:process.env.NEXT_PUBLIC_API_URL + "/api/CoinInfo"}).then(response => {
+    await axios({url:process.env.NEXT_PUBLIC_API_URL + "/api/CoinInfo?type="+type}).then(response => {
         coinList = response.data;
     });
 
@@ -237,11 +253,25 @@ const callCoinList = async (type) => {
 }
 
 /**
+ * 거래대금 상위 20 코인 목록 호출
+ * @param {*} type 
+ * @returns 
+ */
+ const callAPIAccount = async () => {
+    let resultData;
+    await axios({url:process.env.NEXT_PUBLIC_API_URL + '/api/coin/account'}).then(response => {
+        resultData = response.data;
+    });
+
+    return resultData;
+}
+
+/**
  * SSR
  * @returns 
  */
  export async function getServerSideProps(){
-    const coinList = await callCoinList();
+    const coinList = await callCoinList("coinList");
 
     return {
         props: {

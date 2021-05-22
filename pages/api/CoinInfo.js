@@ -1,9 +1,23 @@
 import axios from 'axios';
-import iconv from 'iconv-lite';
-import io from 'socket.io-client';
+import jwt from 'jsonwebtoken';
+import crypto from 'crypto-js';
+import querystring from 'querystring';
 
 export default async (req, res) => {
-    res.status(200).json(await callCoinList(req.query.type))
+    switch(req.query.type){
+        //코인리스트
+        case "coinList" : 
+            res.status(200).json(await callCoinList());
+            break;
+        //계좌정보
+        case "account" :
+            res.status(200).json(await callAccount());
+            break;
+        //주문
+        case "trade" : 
+            res.status(200).json(await callTrade(req.query.market, req.query.tradeType));
+            break;
+    }
 }
 
 /**
