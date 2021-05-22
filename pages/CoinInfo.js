@@ -51,6 +51,7 @@ const CoinInfo = (props) => {
 
     useEffect(() => {
         getRealTimeCoinInfo();
+        
     }, []);
 
     //5분 단위로 종가 저장 및 텔레그램 전송
