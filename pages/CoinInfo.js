@@ -14,8 +14,18 @@ import market from './api/coin/market';
 import querystring from 'querystring';
 
 const useStyles = makeStyles({
+    contentMarket:{
+        float: 'left',
+        marginRight: 50,
+    },
+    contentTrade:{
+        // float: 'left'
+    },
     paper: {
         width: 600,
+    },
+    tableHead : {
+        backgroundColor: '#ffef62'
     },
     th: {
         fontSize: 15,
@@ -49,6 +59,7 @@ const CoinInfo = (props) => {
     const classes = useStyles();
     let websocket;
     const [marketList, setMarketList] = useState(props.marketList);
+    const [tradeList, setTradeList] = useState([]);
     const [account, setAccount]   = useState(props.account);
     const {min, sec} = useSelector(state => ({min : state.timer.min, sec : state.timer.sec}));
 
@@ -60,27 +71,49 @@ const CoinInfo = (props) => {
     //5분 단위로 종가 저장, 수익률 계산 및 텔레그램 전송
     useEffect(() => {
         if(min == 0 && sec == 0){
-                marketList.map((market) => {
-                    if(market.beforeChangedRate && parseInt(market.beforeChangedRate) >= 5){
-                        callTelegramAPI("떡상코인 : " + market.korean_name + "[" + market.beforeChangedRate + "]");
-                    }
+            //5분전 대비 필드 초기화
+            marketList.map((marketData) => {
+                marketData.beforePrice = marketData.trade_price;
+                marketData.beforeChangedPrice = 0;
+                marketData.beforeChangedRate = "0.00%";
+            });
 
-                    market.beforePrice = market.trade_price;
-                    market.beforeChangedPrice = 0;
-                    market.beforeChangedRate = "0.00%";
-                });
+            // 주문정보 초기화
+            setTradeList([]);
+        }else if(sec == 10){
+            //10초 단위로 주문내역을 갱신한다
+            // const apiResult = callTradeAPI('GET');
         }else{
-            marketList.map((market) => {
-                market.beforeChangedPrice = market.beforePrice == null ? 0 : toNumber(market.trade_price) - toNumber(market.beforePrice);
-                market.beforeChangedRate   = (market.beforeChangedPrice / toNumber(market.beforePrice) * 100).toFixed(2) + "%";
-                market.beforeChangedPrice = market.beforeChangedPrice.toLocaleString("ko-KR");
-                if(market.avgPrice > 0){
-                    market.profitRate       = (((toNumber(market.trade_price) / market.avgPrice) * 100) - 100).toFixed(2); //수익률
-                    market.profitPrice      = toCurrency(((toNumber(market.trade_price) - market.avgPrice)) * market.ownVolume)//수익금액
+            marketList.map((marketData) => {
+                //떡상코인 매수 & 텔레그램 전송
+                if(marketData.beforeChangedRate && parseInt(marketData.beforeChangedRate) >= 3){
+                    const tradeData = tradeList.find((tradeData) => tradeData.market == marketData.market);
+                    if(tradeData == null){
+                        const data = {
+                            market      : marketData.market,
+                            korean_name : marketData.korean_name,
+                            tradeType   : "매수",
+                            tradePrice  : 5000,
+                            tradeTime   : new Date().toLocaleTimeString()
+                        }
+                        tradeList.push(data);
+                    }
+                    // callTelegramAPI("떡상코인 : " + marketData.korean_name + "[" + marketData.beforeChangedRate + "]");
+                }
+                
+                marketData.beforeChangedPrice = marketData.beforePrice == null ? 0 : toNumber(marketData.trade_price) - toNumber(marketData.beforePrice);//5분전대비 금액
+                marketData.beforeChangedRate   = (marketData.beforeChangedPrice / toNumber(marketData.beforePrice) * 100).toFixed(2) + "%";//5분전대비 변경률
+                marketData.beforeChangedPrice = marketData.beforeChangedPrice.toLocaleString("ko-KR");
+                
+                //보유코인 평가손익
+                if(marketData.avgPrice > 0){
+                    marketData.profitRate       = (((toNumber(marketData.trade_price) / marketData.avgPrice) * 100) - 100).toFixed(2); //수익률
+                    marketData.profitPrice      = toCurrency(((toNumber(marketData.trade_price) - marketData.avgPrice)) * marketData.ownVolume)//수익금액
                 }
             });
+            setTradeList(tradeList.slice());
         }
-
+        
         setMarketList(marketList.slice());
     }, [min, sec]);
 
@@ -168,97 +201,132 @@ const CoinInfo = (props) => {
         return val;
     }
 
-    /**
-     * 매수주문
-     */
-    const callTradeAPI = async (type) => {
-        await callCoinList('BTC-KRW', 'buy', '5000');
-    }
-
-    /**
-     * 매도주문
-     */
-    const callAPISell = async () => {
-        await callCoinList('BTC-KRW', 'buy', '5000');
-    }
-
     return(
         <div>
             <button onClick={callAccountAPI}>계좌조회</button>
-            <button onClick={callTradeAPI}>매수하기</button>
-            <button onClick={callAPISell}>매도하기</button>
+            <button onClick={callTradeAPI.bind(this, 'POST', 'bid', 'KRW-BTC', '5000', null)}>매수하기</button>
+            <button onClick={callTradeAPI.bind(this, 'POST', 'ask', 'KRW-BTC', null, '0.00010912')}>매도하기</button>
+            <button onClick={callTradeAPI.bind(this, 'GET')}>주문리스트</button>
             <div>
                 <Timer></Timer>
             </div>
-            <TableContainer className={classes.paper} component={Paper}>
-                <Table className={classes.table} aria-label="simple table">
-                    <TableHead >
-                        <TableRow >
-                            <TableCell className={classes.th} align="center">마켓명</TableCell>
-                            <TableCell className={classes.th} align="center">등락</TableCell>
-                            <TableCell className={classes.th} align="center">현재가</TableCell>
-                            <TableCell className={classes.th} align="center">5분전 대비</TableCell>
-                            <TableCell className={classes.th} align="center">보유코인<br/>평가손익</TableCell>
-                            <TableCell className={classes.th} align="center">거래대금</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {marketList.map((market) => (
-                            <TableRow key={market.market} hover={true} className={classes.tr}>
-                                {/* 마켓명 */}
-                                <TableCell align="center" padding="none">
-                                    <p className={classes.korean_name}>{market.korean_name}</p>
-                                    <p>{market.market}</p>
-                                </TableCell>
-                                {/* 등락 */}
-                                <TableCell 
-                                    className={market.change == "RISE" ? classes.rise : market.change == "FALL" ? classes.fall : classes.even}
-                                    align="center"
-                                    padding="none"
-                                >
-                                    <p>{market.change == "RISE" ? "상승" : market.change == "FALL" ? "하락" : "보합"}</p>
-                                </TableCell>
-                                {/* 현재가 */}
-                                <TableCell 
-                                    className={market.change == "RISE" ? classes.rise : market.change == "FALL" ? classes.fall : classes.even}
-                                    align="center"
-                                    padding="none"
-                                >
-                                    <p>{market.trade_price}</p>
-                                    <p>{market.signed_change_rate}</p>    
-                                </TableCell>
-                                {/* 5분전 대비 */}
-                                <TableCell
-                                    className={toNumber(market.beforeChangedPrice) > 0 ? classes.rise : toNumber(market.beforeChangedPrice) < 0 ? classes.fall : classes.even}
-                                    align="center"
-                                    padding="none"
-                                >
-                                    <p>{market.beforeChangedPrice}</p>
-                                    <p>{market.beforeChangedRate}</p>
-                                </TableCell>
-                                {/* 보유코인 평가손익 */}
-                                <TableCell
-                                    className={market.profitRate > 0 ? classes.rise : market.profitRate < 0 ? classes.fall : classes.even}
-                                    align="center"
-                                    padding="none"
-                                >
-                                    <p>{market.profitPrice}</p>
-                                    <p>{market.profitRate}%</p>
-                                </TableCell>
-                                {/* 거래대금 */}
-                                <TableCell
-                                    align="center"
-                                    padding="none"
-                                >
-                                    <p>{market.acc_trade_price_24h}</p>
-                                </TableCell>
+            <div className={classes.contentMarket}>
+                <h2>마켓정보</h2>
+                <TableContainer className={classes.paper} component={Paper}>
+                    <Table className={classes.table} aria-label="simple table">
+                        <TableHead className={classes.tableHead}>
+                            <TableRow>
+                                <TableCell className={classes.th} align="center">마켓명</TableCell>
+                                <TableCell className={classes.th} align="center">등락</TableCell>
+                                <TableCell className={classes.th} align="center">현재가</TableCell>
+                                <TableCell className={classes.th} align="center">5분전 대비</TableCell>
+                                <TableCell className={classes.th} align="center">평가손익</TableCell>
+                                <TableCell className={classes.th} align="center">거래대금</TableCell>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </TableContainer>
-            
-            
+                        </TableHead>
+                        <TableBody>
+                            {marketList.map((market) => (
+                                <TableRow key={market.market} hover={true} className={classes.tr}>
+                                    {/* 마켓명 */}
+                                    <TableCell align="center" padding="none">
+                                        <p className={classes.korean_name}>{market.korean_name}</p>
+                                        <p>{market.market}</p>
+                                    </TableCell>
+                                    {/* 등락 */}
+                                    <TableCell 
+                                        className={market.change == "RISE" ? classes.rise : market.change == "FALL" ? classes.fall : classes.even}
+                                        align="center"
+                                        padding="none"
+                                    >
+                                        <p>{market.change == "RISE" ? "상승" : market.change == "FALL" ? "하락" : "보합"}</p>
+                                    </TableCell>
+                                    {/* 현재가 */}
+                                    <TableCell 
+                                        className={market.change == "RISE" ? classes.rise : market.change == "FALL" ? classes.fall : classes.even}
+                                        align="center"
+                                        padding="none"
+                                    >
+                                        <p>{market.trade_price}</p>
+                                        <p>{market.signed_change_rate}</p>    
+                                    </TableCell>
+                                    {/* 5분전 대비 */}
+                                    <TableCell
+                                        className={toNumber(market.beforeChangedPrice) > 0 ? classes.rise : toNumber(market.beforeChangedPrice) < 0 ? classes.fall : classes.even}
+                                        align="center"
+                                        padding="none"
+                                    >
+                                        <p>{market.beforeChangedPrice}</p>
+                                        <p>{market.beforeChangedRate}</p>
+                                    </TableCell>
+                                    {/* 보유코인 평가손익 */}
+                                    <TableCell
+                                        className={market.profitRate > 0 ? classes.rise : market.profitRate < 0 ? classes.fall : classes.even}
+                                        align="center"
+                                        padding="none"
+                                    >
+                                        <p>{market.profitPrice}</p>
+                                        <p>{market.profitRate}%</p>
+                                    </TableCell>
+                                    {/* 거래대금 */}
+                                    <TableCell
+                                        align="center"
+                                        padding="none"
+                                    >
+                                        <p>{market.acc_trade_price_24h}</p>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            </div>
+            <div className={classes.contentTrade}>
+                <h2>매수주문목록</h2>
+                <TableContainer className={classes.paper} component={Paper}>
+                    <Table className={classes.table} aria-label="simple table">
+                        <TableHead className={classes.tableHead}>
+                            <TableRow>
+                                <TableCell className={classes.th} align="center">마켓명</TableCell>
+                                <TableCell className={classes.th} align="center">주문타입</TableCell>
+                                <TableCell className={classes.th} align="center">주문금액</TableCell>
+                                <TableCell className={classes.th} align="center">주문시간</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {tradeList.map((tradeData) => (
+                                <TableRow>
+                                    <TableCell
+                                        align="center"
+                                        padding="none"
+                                    >
+                                        <p className={classes.korean_name}>{tradeData.korean_name}</p>
+                                        <p>{tradeData.market}</p>
+                                    </TableCell>
+                                    <TableCell
+                                        align="center"
+                                        padding="none"
+                                        className={tradeData.tradeType == "매수" ? classes.rise : classes.fall}
+                                    >
+                                        <p>{tradeData.tradeType}</p>
+                                    </TableCell>
+                                    <TableCell
+                                        align="center"
+                                        padding="none"
+                                    >
+                                        <p>{tradeData.tradePrice}</p>
+                                    </TableCell>
+                                    <TableCell
+                                        align="center"
+                                        padding="none"
+                                    >
+                                        <p>{tradeData.tradeTime}</p>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            </div>
         </div>
     );
 }
@@ -308,26 +376,29 @@ const callMarketAPI = async () => {
 
 /**
  * 주문하기
- * @param {*} type   
+ * @param {*} tradeType   
  * @param {*} market 
  * @param {*} price 
+ * @param {*} volume 
  * @returns 
  */
-const callTradeAPI = async (type, market, price) => {
-    let marketList;
+const callTradeAPI = async (method, tradeType, market, price, volume) => {
+    let resultData;
     const param = {
-        type : type,
+        method : method,
+        tradeType : tradeType,
         market : market,
-        price : price
+        price : price,
+        volume : volume
     };
 
     const query = querystring.encode(param);
 
-    await axios({url:process.env.NEXT_PUBLIC_API_URL + '/api/coin/market?' + query}).then(response => {
-        marketList = response.data;
+    await axios({url:process.env.NEXT_PUBLIC_API_URL + '/api/coin/trade?' + query}).then(response => {
+        resultData = response.data;
     });
 
-    return marketList;
+    return resultData;
 }
 
 /**
