@@ -60,11 +60,10 @@ const CoinInfo = (props) => {
     let websocket;
     const [marketList, setMarketList] = useState(props.marketList);
     const [tradeList, setTradeList] = useState([]);
-    const [account, setAccount]   = useState(props.account);
+    const [accountList, setAccountList]   = useState(props.accountList);
     const {min, sec} = useSelector(state => ({min : state.timer.min, sec : state.timer.sec}));
 
     useEffect(() => {
-        mappingAccount();
         getRealTimeCoinInfo();
     }, []);
 
@@ -80,9 +79,6 @@ const CoinInfo = (props) => {
 
             // 주문정보 초기화
             setTradeList([]);
-        }else if(sec == 10){
-            //10초 단위로 주문내역을 갱신한다
-            // const apiResult = callTradeAPI('GET');
         }else{
             marketList.map((marketData) => {
                 //떡상코인 매수 & 텔레그램 전송
@@ -97,6 +93,8 @@ const CoinInfo = (props) => {
                             tradeTime   : new Date().toLocaleTimeString()
                         }
                         tradeList.push(data);
+
+                        // callTradeAPI('POST', 'bid', marketData.market, 5000, null);
                     }
                     // callTelegramAPI("떡상코인 : " + marketData.korean_name + "[" + marketData.beforeChangedRate + "]");
                 }
@@ -107,29 +105,60 @@ const CoinInfo = (props) => {
                 
                 //보유코인 평가손익
                 if(marketData.avgPrice > 0){
+                    // console.log("🚀 ~ file: CoinInfo.js ~ line 115 ~ marketList.map ~ marketData.market", marketData.market)
                     marketData.profitRate       = (((toNumber(marketData.trade_price) / marketData.avgPrice) * 100) - 100).toFixed(2); //수익률
                     marketData.profitPrice      = toCurrency(((toNumber(marketData.trade_price) - marketData.avgPrice)) * marketData.ownVolume)//수익금액
+                }else{
+                    marketData.profitRate = 0;
+                    marketData.profitPrice = 0;
                 }
             });
+
             setTradeList(tradeList.slice());
         }
-        
         setMarketList(marketList.slice());
+
+        if(sec % 10 == 0){
+            //10초 단위로 보유계좌 갱신
+            callAccountAPI().then((result) => {
+                setAccountList(result);
+            });
+        }
+        
     }, [min, sec]);
 
     /**
-     * 마켓정보와 계좌정보 맵핑
+     * 보유계좌 갱신
      */
-    const mappingAccount = () => {
-        account.map((account) => {
-            let market = marketList.find(market => market.market == account.unit_currency + '-' + account.currency);
-            if(market){
+    useEffect(() => {
+        // 마켓정보와 맵핑
+        marketList.map((market) => {
+            const account = accountList.find(account => account.unit_currency + '-' + account.currency == market.market);
+
+            //보유계좌 평가손익 갱신
+            if(account){
                 market.avgPrice         = toNumber(account.avg_buy_price).toFixed(0);                  //평단
                 market.ownPrice         = toNumber(account.avg_buy_price * account.balance).toFixed(0) //매수금액
                 market.ownVolume        = account.balance;                                             //매수량
+
+                //매수한 뒤 5분이 지난 코인은 일괄 매도
+                if(account.createdAt){
+                    const now = new Date();
+                    let createdAt = new Date(account.createdAt);
+                    createdAt.setMinutes(createdAt.getMinutes() + 5);
+
+                    if(createdAt <= now){
+                        callTradeAPI('POST', 'ask', account.unit_currency + '-' + account.currency, null, '', account.balance);
+                    }
+                }
+            }else{
+                market.avgPrice         = 0;
+                market.ownPrice         = 0; 
+                market.ownVolume        = 0;
             }
         });
-    }
+
+    }, [accountList]);
 
     //실시간 코인 정보 호출
     const getRealTimeCoinInfo = () =>{
@@ -204,8 +233,8 @@ const CoinInfo = (props) => {
     return(
         <div>
             <button onClick={callAccountAPI}>계좌조회</button>
-            <button onClick={callTradeAPI.bind(this, 'POST', 'bid', 'KRW-BTC', '5000', null)}>매수하기</button>
-            <button onClick={callTradeAPI.bind(this, 'POST', 'ask', 'KRW-BTC', null, '0.00010912')}>매도하기</button>
+            <button onClick={callTradeAPI.bind(this, 'POST', 'bid', 'KRW-ETC', '5000', null)}>매수하기</button>
+            <button onClick={callTradeAPI.bind(this, 'POST', 'ask', 'KRW-ETC', null, '0.00010912')}>매도하기</button>
             <button onClick={callTradeAPI.bind(this, 'GET')}>주문리스트</button>
             <div>
                 <Timer></Timer>
@@ -294,7 +323,7 @@ const CoinInfo = (props) => {
                         </TableHead>
                         <TableBody>
                             {tradeList.map((tradeData) => (
-                                <TableRow>
+                                <TableRow key={tradeData.market}>
                                     <TableCell
                                         align="center"
                                         padding="none"
@@ -376,7 +405,8 @@ const callMarketAPI = async () => {
 
 /**
  * 주문하기
- * @param {*} tradeType   
+ * @param {*} method 
+ * @param {*} tradeType 
  * @param {*} market 
  * @param {*} price 
  * @param {*} volume 
@@ -407,12 +437,12 @@ const callTradeAPI = async (method, tradeType, market, price, volume) => {
  */
  export async function getServerSideProps(){
     const marketList = await callMarketAPI();
-    const account  = await callAccountAPI();
+    const accountList  = await callAccountAPI();
 
     return {
         props: {
             marketList : marketList,
-            account  : account,
+            accountList  : accountList,
         }
     }
 }

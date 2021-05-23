@@ -18,16 +18,13 @@ export default async (req, res) => {
  * 주문리스트 조회
  */
 const callGET = async () => {
-    // const url = "https://api.upbit.com/v1/orders?";
-    const url = 'https://api.upbit.com/v1/order?'
+    const resultList = [];
+    const url = "https://api.upbit.com/v1/orders?";
 
-    // const param = {
-    //     state: 'done',     //체결완료
-    //     page : 1,          //페이지
-    //     limit : 100        //요청 개수
-    // }
     const param = {
-        uuid: '29cfffef-4e6d-4324-8255-5e0389652d9f'
+        state: 'done',     //체결완료
+        page : 1,          //페이지
+        limit : 100        //요청 개수
     }
 
     const query = querystring.encode(param);
@@ -48,6 +45,24 @@ const callGET = async () => {
     await axios({url:url + query, method: "GET", headers: {Authorization : authorizationToken}, data : param}).then(response => {
         const tradeList = response.data;
         console.log(tradeList)
+        // tradeList.map((tradeData) => {
+        //     const resultData = resultList.find((resultData) => resultData.market == tradeData.market);
+        //     if(resultData){
+        //         resultData.
+        //     }else{
+        //         const data = {
+        //             market : tradeData.market,
+        //             tradeType : tradeData.side == 'bid' ? '매수' : '매도',
+        //             price : tradeData.price,
+        //             volume : tradeData.volume,
+        //             tradeTime : tradeData.created_at.split('T')[0]
+        //         }
+
+        //         resultList.push(data);
+        //     }
+
+        // });
+
     }).catch(error => {
           console.log(error.response.data);
     });
@@ -57,6 +72,12 @@ const callGET = async () => {
  * 주문하기
  */
 const callPOST = async (tradeType, market, price, volume) => {
+    //주문 예외
+    if(market == 'KRW-ETC' || market == 'KRW-ETH'){
+        // console.log(market + " 주문예외");
+        return;
+    }
+
     const url = "https://api.upbit.com/v1/orders";
 
     const body = {
@@ -82,6 +103,7 @@ const callPOST = async (tradeType, market, price, volume) => {
     const jwtToken = jwt.sign(payload, process.env.JWT_SECRET_CODE);
     const authorizationToken = `Bearer ${jwtToken}`;
 
+    console.log(market + ' 주문 ' + tradeType);
     await axios({url:url, method:"POST", headers: {Authorization : authorizationToken}, data : body}).then(response => {
         const tradeData = response.data;
         console.log(tradeData);
