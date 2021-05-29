@@ -44,7 +44,7 @@ const callGET = async () => {
 
     await axios({url:url + query, method: "GET", headers: {Authorization : authorizationToken}, data : param}).then(response => {
         const tradeList = response.data;
-        console.log(tradeList)
+        // console.log(tradeList)
         // tradeList.map((tradeData) => {
         //     const resultData = resultList.find((resultData) => resultData.market == tradeData.market);
         //     if(resultData){
@@ -104,6 +104,7 @@ const callPOST = async (tradeType, market, price, volume) => {
     const authorizationToken = `Bearer ${jwtToken}`;
 
     console.log(market + ' 주문 ' + tradeType);
+    console.log(body);
     await axios({url:url, method:"POST", headers: {Authorization : authorizationToken}, data : body}).then(response => {
         const tradeData = response.data;
         console.log(tradeData);

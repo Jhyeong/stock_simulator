@@ -10,8 +10,11 @@ import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
 import Paper from '@material-ui/core/Paper';
 import Timer from '../components/Timer';
-import market from './api/coin/market';
 import querystring from 'querystring';
+import Switch from '@material-ui/core/Switch';
+import Button from '@material-ui/core/Button';
+import DateFnsUtils from '@date-io/date-fns';
+import {MuiPickersUtilsProvider,KeyboardDatePicker} from '@material-ui/pickers';
 
 const useStyles = makeStyles({
     contentMarket:{
@@ -58,11 +61,22 @@ const useStyles = makeStyles({
 const CoinInfo = (props) => {
     const classes = useStyles();
     let websocket;
-    const [marketList, setMarketList] = useState(props.marketList);
-    const [tradeList, setTradeList] = useState([]);
-    const [accountList, setAccountList]   = useState(props.accountList);
+    const [marketList, setMarketList] = useState(props.marketList); //마켓 목록
+    const [tradeList, setTradeList] = useState([]);// 매수대기목록
+    const [profitList, setProfitList] = useState([]); // 정산목록
+    const [accountList, setAccountList]   = useState(props.accountList); //계좌목록
+    const [tradeSwitch, setTradeSwitch] = useState(false);
     const {min, sec} = useSelector(state => ({min : state.timer.min, sec : state.timer.sec}));
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const buyBase = 3;  //매수기준%
+    const lossBase = -3; //손절%
+    const profitBase = 3;//익절%
 
+    const handleDateChange = (date) => {
+      setSelectedDate(date);
+    };
+
+    //최초 로딩시 실시간 시세정보 호출
     useEffect(() => {
         getRealTimeCoinInfo();
     }, []);
@@ -82,19 +96,25 @@ const CoinInfo = (props) => {
         }else{
             marketList.map((marketData) => {
                 //떡상코인 매수 & 텔레그램 전송
-                if(marketData.beforeChangedRate && parseInt(marketData.beforeChangedRate) >= 3){
-                    const tradeData = tradeList.find((tradeData) => tradeData.market == marketData.market);
-                    if(tradeData == null){
+                if(marketData.beforeChangedRate && parseInt(marketData.beforeChangedRate) >= buyBase){
+                    const trade = tradeList.find((trade) => trade.market == marketData.market);
+                    const account = accountList.find((account) => account.unit_currency + '-' + account.currency == marketData.market);
+                    
+                    //매수대기목록 & 보유계좌에 없는 경우 매수
+                    if(!trade && !account){
                         const data = {
                             market      : marketData.market,
                             korean_name : marketData.korean_name,
                             tradeType   : "매수",
-                            tradePrice  : 5000,
+                            tradePrice  : 7000,
                             tradeTime   : new Date().toLocaleTimeString()
                         }
                         tradeList.push(data);
 
-                        // callTradeAPI('POST', 'bid', marketData.market, 5000, null);
+                        //매수주문
+                        if(tradeSwitch){
+                            callOrderAPI('POST', 'bid', marketData.market, 7000, null);
+                        }
                     }
                     // callTelegramAPI("떡상코인 : " + marketData.korean_name + "[" + marketData.beforeChangedRate + "]");
                 }
@@ -141,15 +161,14 @@ const CoinInfo = (props) => {
                 market.ownPrice         = toNumber(account.avg_buy_price * account.balance).toFixed(0) //매수금액
                 market.ownVolume        = account.balance;                                             //매수량
 
-                //매수한 뒤 5분이 지난 코인은 일괄 매도
-                if(account.createdAt){
-                    const now = new Date();
-                    let createdAt = new Date(account.createdAt);
-                    createdAt.setMinutes(createdAt.getMinutes() + 5);
+                if(tradeSwitch && (market.profitRate <= lossBase || profitBase <= market.profitRate) && toNumber(market.ownPrice) + toNumber(market.profitPrice) >= 5000){
+                    const type = market.profitRate <= lossBase ? "손절" : '익절';
+                    callOrderAPI('POST', 'ask', account.unit_currency + '-' + account.currency, null, account.balance);
 
-                    if(createdAt <= now){
-                        callTradeAPI('POST', 'ask', account.unit_currency + '-' + account.currency, null, '', account.balance);
-                    }
+                    //5분전 대비 초기화
+                    market.beforePrice = market.trade_price;
+                    market.beforeChangedPrice = 0;
+                    market.beforeChangedRate = "0.00%";
                 }
             }else{
                 market.avgPrice         = 0;
@@ -230,12 +249,35 @@ const CoinInfo = (props) => {
         return val;
     }
 
+    /**
+     * 정산 새로고침
+     */
+    const getProfitList = async () => {
+        setProfitList([]);
+        setProfitList(await callProfitAPI(selectedDate));
+    }
+
+    /**
+     * 자동매매 여부 스위치
+     */
+    const changeTradeSwitch = () => {
+        setTradeSwitch(!tradeSwitch);
+    }
+
     return(
         <div>
             <button onClick={callAccountAPI}>계좌조회</button>
-            <button onClick={callTradeAPI.bind(this, 'POST', 'bid', 'KRW-ETC', '5000', null)}>매수하기</button>
-            <button onClick={callTradeAPI.bind(this, 'POST', 'ask', 'KRW-ETC', null, '0.00010912')}>매도하기</button>
-            <button onClick={callTradeAPI.bind(this, 'GET')}>주문리스트</button>
+            <button onClick={callOrderAPI.bind(this, 'POST', 'bid', 'KRW-ETC', '5000', null)}>매수하기</button>
+            <button onClick={callOrderAPI.bind(this, 'POST', 'ask', 'KRW-ETC', null, '0.00010912')}>매도하기</button>
+            <button onClick={callOrderAPI.bind(this, 'GET')}>주문리스트</button>
+            <div>
+                <span>자동매매</span>
+                <Switch
+                    checked={tradeSwitch}
+                    onChange={changeTradeSwitch}
+                    inputProps={{ 'aria-label': 'secondary checkbox' }}
+                />
+            </div>
             <div>
                 <Timer></Timer>
             </div>
@@ -310,7 +352,7 @@ const CoinInfo = (props) => {
                 </TableContainer>
             </div>
             <div className={classes.contentTrade}>
-                <h2>매수주문목록</h2>
+                <h2>매수대기목록</h2>
                 <TableContainer className={classes.paper} component={Paper}>
                     <Table className={classes.table} aria-label="simple table">
                         <TableHead className={classes.tableHead}>
@@ -349,6 +391,74 @@ const CoinInfo = (props) => {
                                         padding="none"
                                     >
                                         <p>{tradeData.tradeTime}</p>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            </div>
+            <div className={classes.contentProfit}>
+                <h2>정산
+                <Button variant="outlined" color="primary" size="small" onClick={getProfitList}>
+                    새로고침
+                </Button>
+                </h2>
+                <MuiPickersUtilsProvider utils={DateFnsUtils}>
+                    <KeyboardDatePicker
+                        disableToolbar
+                        variant="inline"
+                        format="yyyy-MM-dd"
+                        margin="normal"
+                        id="date-picker-inline"
+                        value={selectedDate}
+                        onChange={handleDateChange}
+                    />
+                </MuiPickersUtilsProvider>
+                <TableContainer className={classes.paper} component={Paper}>
+                    <Table className={classes.table} aria-label="simple table">
+                        <TableHead className={classes.tableHead}>
+                            <TableRow>
+                                <TableCell className={classes.th} align="center">마켓명</TableCell>
+                                <TableCell className={classes.th} align="center">주문일자</TableCell>
+                                <TableCell className={classes.th} align="center">매수</TableCell>
+                                <TableCell className={classes.th} align="center">매도</TableCell>
+                                <TableCell className={classes.th} align="center">합계</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {profitList.map((profitData) => (
+                                <TableRow key={profitData.market}>
+                                    <TableCell
+                                        align="center"
+                                        padding="none"
+                                    >
+                                        <p>{profitData.market}</p>
+                                    </TableCell>
+                                    <TableCell
+                                        align="center"
+                                        padding="none"
+                                    >
+                                        <p>{profitData.tradeDate}</p>
+                                    </TableCell>
+                                    <TableCell
+                                        align="center"
+                                        padding="none"
+                                    >
+                                        <p>{toCurrency(profitData.buyPrice)}</p>
+                                    </TableCell>
+                                    <TableCell
+                                        align="center"
+                                        padding="none"
+                                    >
+                                        <p>{toCurrency(profitData.sellPrice)}</p>
+                                    </TableCell>
+                                    <TableCell
+                                        align="center"
+                                        padding="none"
+                                        className={toCurrency(profitData.sum) > 0 ? classes.rise : classes.fall}
+                                    >
+                                        <p>{toCurrency(profitData.sum)}</p>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -412,7 +522,7 @@ const callMarketAPI = async () => {
  * @param {*} volume 
  * @returns 
  */
-const callTradeAPI = async (method, tradeType, market, price, volume) => {
+const callOrderAPI = async (method, tradeType, market, price, volume) => {
     let resultData;
     const param = {
         method : method,
@@ -423,8 +533,23 @@ const callTradeAPI = async (method, tradeType, market, price, volume) => {
     };
 
     const query = querystring.encode(param);
+    // console.log("🚀 ~ file: CoinInfo.js ~ line 442 ~ callOrderAPI ~ query", query)
 
-    await axios({url:process.env.NEXT_PUBLIC_API_URL + '/api/coin/trade?' + query}).then(response => {
+    await axios({url:process.env.NEXT_PUBLIC_API_URL + '/api/coin/order?' + query}).then(response => {
+        resultData = response.data;
+    });
+
+    return resultData;
+}
+
+/**
+ * 정산결과
+ * @param {*} type 
+ * @returns 
+ */
+ const callProfitAPI = async (date) => {
+    let resultData = [];
+    await axios({url:process.env.NEXT_PUBLIC_API_URL + '/api/coin/profit?date=' + date}).then(response => {
         resultData = response.data;
     });
 

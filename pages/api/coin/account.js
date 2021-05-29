@@ -31,9 +31,9 @@ const callAPI = async () => {
     url = "https://api.upbit.com/v1/orders?";
 
     payload = {
-        state: 'done',     //체결완료
-        page : 1,          //페이지
-        limit : 100        //요청 개수
+        states: ['done', 'cancel'],     //체결완료, 취소(시장가 매수는 취소되기도 함)
+        page : 1,                       //페이지
+        limit : 20                     //요청 개수
     }
 
     const query = querystring.encode(payload);
