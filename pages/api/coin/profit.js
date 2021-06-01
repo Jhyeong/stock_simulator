@@ -19,45 +19,27 @@ const callGET = async (date) => {
     const lastPage = 2;
 
     for(let i = 1; i <= lastPage; i++){
-        for(let j = 0 ; j < 2; j++){
-            let state = '';
-            switch(j){
-                case 0 : 
-                    state = 'done'
-                    break;
-                case 1:
-                    state = 'cancel'
-                    break;
-            }
-            
-            const param = {
-                state: state,     //체결완료
-                page : i,          //페이지
-                limit : 100        //요청 개수
-            };
+        const query = `states[]=done&states[]=cancel&page=${i}&limit=100`;
+        console.log("🚀 ~ file: profit.js ~ line 41 ~ callGET ~ query", query)
         
-            const query = querystring.encode(param);
-            
-            const hash = crypto.algo.SHA512.create();
-            const queryHash = hash.update(query).finalize().toString();
-            
-            const payload = {
-                access_key: process.env.JWT_ACCESS_CODE,
-                nonce: guid(),
-                query_hash: queryHash,
-                query_hash_alg: 'SHA512'
-            }
-            
-            const jwtToken = jwt.sign(payload, process.env.JWT_SECRET_CODE);
-            const authorizationToken = `Bearer ${jwtToken}`;
+        const hash = crypto.algo.SHA512.create();
+        const queryHash = hash.update(query).finalize().toString();
         
-            await axios({url:url + query, method: "GET", headers: {Authorization : authorizationToken}, data : param}).then(response => {
-                tmpList.push(...response.data);
-        
-            }).catch(error => {
-                  console.log(error.response.data);
-            });
+        const payload = {
+            access_key: process.env.JWT_ACCESS_CODE,
+            nonce: guid(),
+            query_hash: queryHash,
+            query_hash_alg: 'SHA512'
         }
+        
+        const jwtToken = jwt.sign(payload, process.env.JWT_SECRET_CODE);
+        const authorizationToken = `Bearer ${jwtToken}`;
+    
+        await axios({url:url + query, method: "GET", headers: {Authorization : authorizationToken}}).then(response => {
+            tmpList.push(...response.data);
+        }).catch(error => {
+            console.log(error.response.data);
+        });
     }
 
     //날짜순 내림차순 정렬
@@ -66,7 +48,7 @@ const callGET = async (date) => {
         else if(a.created_at < b.created_at) return 1;
         else return 0;
     });
-
+    
     for(let item of tmpList){
         if(item.created_at.split('T')[0] < lastDate){
             break;
@@ -74,7 +56,7 @@ const callGET = async (date) => {
 
         const preData = resultList.find((preData) => (item.market == preData.market && item.created_at.split('T')[0] == preData.tradeDate));
         
-        //시장가 매도로 인해 가격이 없는 경우 별도 조회
+        //시장가 매도로 인해 가격정보가 없는 경우 별도 조회
         if(!item.price){
             item.price = await getPrice(item.uuid);
             console.log("🚀 ~ file: profit.js ~ line 66 ~ callGET ~ item.price", item.price)
@@ -84,9 +66,6 @@ const callGET = async (date) => {
         if(preData){
             preData.buyPrice = item.side == 'bid' ? parseInt(item.price) + preData.buyPrice : preData.buyPrice;
             preData.sellPrice = item.side == 'ask' ? (item.price * item.volume) + preData.sellPrice : preData.sellPrice;
-            // if(item.market == 'KRW-TON'){
-            //     console.log(item)
-            // }
         }else{
             const data = {
                 market : item.market,
@@ -98,7 +77,6 @@ const callGET = async (date) => {
         }
         
     }
-    // console.log("🚀 ~ file: profit.js ~ line 95 ~ callGET ~ getPrice('0e7a9b8a-8447-4458-ac1e-49eeb5060ecf');", await getPrice('0e7a9b8a-8447-4458-ac1e-49eeb5060ecf'))
     
     //합계
     resultList.map((result) => {
@@ -109,7 +87,7 @@ const callGET = async (date) => {
 }
 
 /**
- * 시장가 거래 건별 가격 조회
+ * 건별 가격 조회
  * @param {}} uuid 
  * @returns 
  */

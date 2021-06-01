@@ -1,4 +1,5 @@
 import axios from 'axios';
+import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { makeStyles } from '@material-ui/core/styles';
@@ -15,11 +16,16 @@ import Switch from '@material-ui/core/Switch';
 import Button from '@material-ui/core/Button';
 import DateFnsUtils from '@date-io/date-fns';
 import {MuiPickersUtilsProvider,KeyboardDatePicker} from '@material-ui/pickers';
+const CandlestickChart = dynamic(() => import('../components/CandlestickChart'),{ ssr: false });
 
 const useStyles = makeStyles({
     contentMarket:{
         float: 'left',
         marginRight: 50,
+    },
+    contentChart: {
+        float: 'left',
+        width: 1200
     },
     contentTrade:{
         // float: 'left'
@@ -67,7 +73,8 @@ const CoinInfo = (props) => {
     const [accountList, setAccountList]   = useState(props.accountList); //계좌목록
     const [tradeSwitch, setTradeSwitch] = useState(false);
     const {min, sec} = useSelector(state => ({min : state.timer.min, sec : state.timer.sec}));
-    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [selectedDate, setSelectedDate] = useState(new Date());//정산 조회 날짜
+    const [selectedMarket, setSelectedMarket] = useState('KRW-ETC');//선택한 마켓
     const buyBase = 3;  //매수기준%
     const lossBase = -3; //손절%
     const profitBase = 3;//익절%
@@ -264,12 +271,20 @@ const CoinInfo = (props) => {
         setTradeSwitch(!tradeSwitch);
     }
 
+    /**
+     * 마켓 행 클릭
+     * @param {*} event 
+     * @param {*} market 
+     */
+    const clickMarketRow = (event, market) => {
+        setSelectedMarket(market);
+    }
+
     return(
         <div>
             <button onClick={callAccountAPI}>계좌조회</button>
             <button onClick={callOrderAPI.bind(this, 'POST', 'bid', 'KRW-ETC', '5000', null)}>매수하기</button>
             <button onClick={callOrderAPI.bind(this, 'POST', 'ask', 'KRW-ETC', null, '0.00010912')}>매도하기</button>
-            <button onClick={callOrderAPI.bind(this, 'GET')}>주문리스트</button>
             <div>
                 <span>자동매매</span>
                 <Switch
@@ -297,7 +312,7 @@ const CoinInfo = (props) => {
                         </TableHead>
                         <TableBody>
                             {marketList.map((market) => (
-                                <TableRow key={market.market} hover={true} className={classes.tr}>
+                                <TableRow key={market.market} hover={true} className={classes.tr} onClick={(event) => clickMarketRow(event, market.market)}>
                                     {/* 마켓명 */}
                                     <TableCell align="center" padding="none">
                                         <p className={classes.korean_name}>{market.korean_name}</p>
@@ -350,6 +365,10 @@ const CoinInfo = (props) => {
                         </TableBody>
                     </Table>
                 </TableContainer>
+            </div>
+            <div className={classes.contentChart}>
+                <h2>차트</h2>
+                <CandlestickChart market={selectedMarket}></CandlestickChart>
             </div>
             <div className={classes.contentTrade}>
                 <h2>매수대기목록</h2>
